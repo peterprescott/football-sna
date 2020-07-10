@@ -159,6 +159,144 @@ events <- LoadAndScaleData('England')
 ```
 
 ```{r}
+LeagueResults <- function(league){
+
+    teams <- sort(unique(league$team))
+
+    home_score <- matrix(0, nrow=20, ncol=20)
+    colnames(home_score) <- teams
+    rownames(home_score) <- teams
+
+    away_score <- home_score
+
+    league_table <- matrix(0, nrow=20, ncol=8)
+    rownames(league_table) <- teams
+    colnames(league_table) <- c('POS','PTS','W','D','L','GF','GA','GD')
+
+    return(list(league_table, home_score, away_score))
+}
+```
+
+```{r}
+
+```
+
+```{r}
+v <- LeagueResults(events)
+```
+
+```{r}
+hs <- v[[2]]
+```
+
+```{r}
+league <- events
+```
+
+```{r}
+teams <- sort(unique(league$team))
+
+home_score <- matrix(0, nrow=20, ncol=20)
+colnames(home_score) <- teams
+rownames(home_score) <- teams
+
+away_score <- home_score
+
+league_table <- matrix(0, nrow=20, ncol=8)
+rownames(league_table) <- teams
+colnames(league_table) <- c('POS','PTS','W','D','L','GF','GA','GD')
+```
+
+```{r}
+for m in unique(league$matchId){
+    
+    match <- league[league$matchId==m,]
+    home_team <- unique(match[match$home_or_away=='Home']$team)
+    away_team <- unique(match[match$home_or_away=='Away']$team)
+    home_goals <- nrow(match[match$to_team=='Home Goal',])
+    away_goals <- nrow(match[match$to_team=='Away Goal',])
+    
+    home_score[home_team, away_team] <- home_goals
+    away_score[home_team, away_team] <- away_goals
+    
+    league_table[]
+       
+        league_table[team]
+    }
+    
+    
+}
+```
+
+```{r}
+league_table
+```
+
+```{r}
+
+```
+
+```{r}
+for (match in unique(events$matchId)){
+
+    goals <- 0
+
+}
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+mId <- unique(events$matchId)[1]
+```
+
+```{r}
+m <- events[events$matchId==mId,]
+```
+
+```{r}
+home_goals <- m[m$to_team=='Home Goal',]
+```
+
+```{r}
+away_goals <- m[m$to_team=='Away Goal',]
+```
+
+```{r}
+home_goals <- matrix(0, nrow=20, ncol=20)
+```
+
+```{r}
+away_goals <- matrix(0, nrow=20, ncol=20)
+```
+
+```{r}
+colnames(home_goals) <- teams
+```
+
+```{r}
+rownames(home_goals) <- teams
+```
+
+```{r}
+home
+```
+
+```{r}
+home_goals
+```
+
+```{r}
+teams <- sort(unique(events$team))
+```
+
+```{r}
 ShowMatchEvents <- function(events, match_id, team_name, home_or_away='Home', flip=F) {
     #' Visualize events on pitch for given match and team.
     
@@ -497,11 +635,19 @@ ExpectedScoringTime <- function(transition_matrix){
 ```
 
 ```{r}
-sort(ExpectedScoringTime(
+x_score_time <- ExpectedScoringTime(
     TransitionMatrix(
-        GameGraph(events, match_id, home_or_away='Away'))
+        GameGraph(events, match_id, home_or_away='Home'))
 
-))
+)
+```
+
+```{r}
+x_score_time/mean(x_score_time)
+```
+
+```{r}
+x_score_time/mean(x_score_time)
 ```
 
 ```{r}
