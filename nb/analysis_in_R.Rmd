@@ -160,6 +160,7 @@ events <- LoadAndScaleData('England')
 
 ```{r}
 LeagueResults <- function(league){
+    #' Calculate results and table for given national league.
 
     teams <- sort(unique(league$team))
 
@@ -223,100 +224,6 @@ league_table[order(-league_table$PTS),]
 ```
 
 ```{r}
-results[[2]]
-```
-
-```{r}
-results[[3]]
-```
-
-```{r}
-
-```
-
-```{r}
-[order(league_table[,1])]
-```
-
-```{r}
-table
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-v <- LeagueResults(events)
-```
-
-```{r}
-hs <- v[[2]]
-```
-
-```{r}
-league <- events
-```
-
-```{r}
-teams <- sort(unique(league$team))
-
-home_score <- matrix(0, nrow=20, ncol=20)
-colnames(home_score) <- teams
-rownames(home_score) <- teams
-
-away_score <- home_score
-
-league_table <- matrix(0, nrow=20, ncol=8)
-rownames(league_table) <- teams
-colnames(league_table) <- c('POS','PTS','W','D','L','GF','GA','GD')
-```
-
-```{r}
-for (m in unique(league$matchId)){
-    
-    match <- league[league$matchId==m,]
-    home_team <- unique(match[match$home_or_away=='Home',]$team)
-    away_team <- unique(match[match$home_or_away=='Away',]$team)
-    home_goals <- nrow(match[match$to_team=='Home Goal',])
-    away_goals <- nrow(match[match$to_team=='Away Goal',])
-    
-    home_score[home_team, away_team] <- home_goals
-    away_score[home_team, away_team] <- away_goals
-    
-    if (home_goals > away_goals){
-        league_table[home_team,'W'] <- league_table[home_team,'W'] + 1
-        league_table[away_team,'L'] <- league_table[away_team,'L'] + 1
-    } else if (away_goals > home_goals){
-        league_table[home_team,'L'] <- league_table[home_team,'L'] + 1
-        league_table[away_team,'W'] <- league_table[away_team,'W'] + 1    
-    } else if (home_goals == away_goals) {
-        league_table[home_team,'D'] <- league_table[home_team,'D'] + 1
-        league_table[away_team,'D'] <- league_table[away_team,'D'] + 1
-    }
-    
-    league_table[home_team,'GF'] <- league_table[home_team,'GF'] + home_goals
-    league_table[away_team,'GF'] <- league_table[away_team,'GF'] + away_goals
-    league_table[home_team,'GA'] <- league_table[home_team,'GA'] + away_goals
-    league_table[away_team,'GA'] <- league_table[away_team,'GA'] + home_goals
-    
-    for (team in c(home_team, away_team)){
-        league_table[team,'GD'] <- league_table[team,'GF'] - league_table[team,'GA']
-        league_table[team,'PTS'] <- 3*league_table[team,'W'] + 1*league_table[team,'D']
-    }
-    
-}
-```
-
-```{r}
-league_table
-```
-
-```{r}
 
 ```
 
@@ -326,78 +233,6 @@ league_table
 
 ```{r}
 
-```
-
-```{r}
-
-```
-
-```{r}
-league_table['Arsenal',]
-```
-
-```{r}
-
-```
-
-```{r}
-for (match in unique(events$matchId)){
-
-    goals <- 0
-
-}
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-mId <- unique(events$matchId)[1]
-```
-
-```{r}
-m <- events[events$matchId==mId,]
-```
-
-```{r}
-home_goals <- m[m$to_team=='Home Goal',]
-```
-
-```{r}
-away_goals <- m[m$to_team=='Away Goal',]
-```
-
-```{r}
-home_goals <- matrix(0, nrow=20, ncol=20)
-```
-
-```{r}
-away_goals <- matrix(0, nrow=20, ncol=20)
-```
-
-```{r}
-colnames(home_goals) <- teams
-```
-
-```{r}
-rownames(home_goals) <- teams
-```
-
-```{r}
-home
-```
-
-```{r}
-home_goals
-```
-
-```{r}
-teams <- sort(unique(events$team))
 ```
 
 ```{r}
