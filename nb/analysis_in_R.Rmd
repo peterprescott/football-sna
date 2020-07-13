@@ -159,21 +159,25 @@ events <- LoadAndScaleData('England')
 ```
 
 ```{r}
+events[1:10,]
+```
+
+```{r}
 LeagueResults <- function(league){
     #' Calculate results and table for given national league.
 
     teams <- sort(unique(league$team))
 
-    home_score <- matrix(0, nrow=20, ncol=20)
+    home_score <- matrix(0, nrow=length(teams), ncol=length(teams))
     colnames(home_score) <- teams
     rownames(home_score) <- teams
 
     away_score <- home_score
 
-    league_table <- matrix(0, nrow=20, ncol=8)
+    league_table <- matrix(0, nrow=length(teams), ncol=9)
     rownames(league_table) <- teams
-    colnames(league_table) <- c('POS','PTS','W','D','L','GF','GA','GD')
-
+    colnames(league_table) <- c('Pos','Pld','W','D','L','GF','GA','GD','Pts')
+    
     for (m in unique(league$matchId)){
 
         match <- league[league$matchId==m,]
@@ -203,36 +207,75 @@ LeagueResults <- function(league){
 
         for (team in c(home_team, away_team)){
             league_table[team,'GD'] <- league_table[team,'GF'] - league_table[team,'GA']
-            league_table[team,'PTS'] <- 3*league_table[team,'W'] + 1*league_table[team,'D']
+            league_table[team,'Pts'] <- 3*league_table[team,'W'] + 1*league_table[team,'D']
+            league_table[team,'Pld'] <- league_table[team,'Pld'] + 1
         }
 
     }
-    return(list(league_table, home_score, away_score))
+    
+    league_table <- league_table[order(-league_table[,'Pts']),]
+    
+    league_table[,'Pos'] <- 1:20
+
+    return(league_table)
 }
 ```
 
 ```{r}
-results <- LeagueResults(events)
+prem <- LeagueResults(events)
 ```
 
 ```{r}
-league_table <- data.frame(results[[1]])
+pl <- as.data.frame(prem)
 ```
 
 ```{r}
-league_table[order(-league_table$PTS),]
+pl['Team'] <- rownames(pl)
 ```
 
 ```{r}
+pl2 <- as.data.frame(pl[,c(10,2:9)])
+```
+
+```{r}
+rownames(pl2) <- c()
+```
+
+```{r}
+pl2[1:5,]
+```
+
+```{r}
+prem[1:5,]
+```
+
+```{r}
+NationalResults <- function(nation) {
+ 
+    data <- LoadAndScaleData(nation)
+    results <- LeagueResults(data)
+    return(results)
+}
 
 ```
 
 ```{r}
-
+correct_res <- read.csv('../data/league_results/England17-18.csv')
 ```
 
 ```{r}
+correct_res
+```
 
+```{r}
+france <- NationalResults('France')
+germany <- NationalResults('Germany')
+italy <- NationalResults('Italy')
+spain <- NationalResults('Spain')
+```
+
+```{r}
+premiership <- NationalResults('England')
 ```
 
 ```{r}
@@ -296,7 +339,13 @@ ShowMatchEvents <- function(events, match_id, team_name, home_or_away='Home', fl
 ```
 
 ```{r}
+#away vs Crystal Palace
 match_id <- '2500032'
+```
+
+```{r}
+# vs man city
+match_id <- '2499943'
 ```
 
 ```{r}
@@ -441,8 +490,16 @@ PassNetwork <- function(events, match_id, team_name, team_colour='red', home_or_
 ```
 
 ```{r}
-PassNetwork(events, match_id, team_colour='blue')
-PassNetwork(events, match_id, home_or_away='Away', flip=T)
+PassNetwork(events, match_id, team_colour='red')
+PassNetwork(events, match_id, team_colour='blue', home_or_away='Away', flip=T)
+```
+
+```{r}
+2499943
+```
+
+```{r}
+
 ```
 
 ```{r}
@@ -450,7 +507,7 @@ GameGraph <- function(events, match_id, team_name, home_or_away='Home') {
     #' Return Possession Graph for given Match and Team.
     
     game <- events[events$matchId == match_id,]
-    game <- game[game$source!='' & game$target!='nan',]
+    game <- game[game$source!='' & game$target!='' & game$target!='nan',]
     
      # note teams
     teams <- unique(game$team)
@@ -507,6 +564,10 @@ GameGraph <- function(events, match_id, team_name, home_or_away='Home') {
     team_adj[(nrow(team_adj)-1),(ncol(team_adj))] <- opposition_own_goals
 
     team_graph <- graph_from_adjacency_matrix(team_adj, mode='directed')
+    
+    team_graph$team <- team_name
+    team_graph$opposition <- opposition_team
+    team_graph$status <- home_or_away
 
     return(team_graph)
 }
@@ -574,43 +635,93 @@ ExpectedScoringTime <- function(transition_matrix){
 ```
 
 ```{r}
-x_score_time <- ExpectedScoringTime(
-    TransitionMatrix(
-        GameGraph(events, match_id, home_or_away='Home'))
-
-)
-```
-
-```{r}
-x_score_time/mean(x_score_time)
-```
-
-```{r}
-x_score_time/mean(x_score_time)
-```
-
-```{r}
-names(transition_matrix[1,])[1:(nrow(transition_matrix)-2)]
-```
-
-```{r}
-max_steps <- 10000
-transition_matrix <- TransitionMatrix(GameGraph(events, match_id))
-state_probabilities <- matrix(NA,nrow=max_steps+1,ncol=ncol(transition_matrix),dimnames=list(0:max_steps,(ncol(transition_matrix)-1):0))
-vector <- rep(0,ncol(transition_matrix))
-vector[6] <- 1
-state_probabilities[1,] <- vector
-
-for ( kk in 1:max_steps ) {
-    state_probabilities[kk+1,] <- t(transition_matrix)%*%state_probabilities[kk,]
+SeasonAdjacencyMatrix <- function(events, team) {
+    
+    players <- unique(events[events$team==team & events$source!='' & events$target!='',]$source)
+    n <- length(players) + 2
+    squad_adj <- matrix(0,nrow=n,ncol=n)
+    rownames(squad_adj) <- c(as.character(players), 'Opposition', 'Goal')
+    colnames(squad_adj) <- rownames(squad_adj)
+    
+    games <- unique(events[events$team==team,]$matchId)
+    
+    for (game in games){
+        
+        # get graph and adjacency matrix for game
+        game_graph <- GameGraph(events, game, team)
+        game_adj <- AdjacencyMatrix(game_graph)
+        
+        # add values of game adjacency matrix to full-season matrix
+        for (source in rownames(game_adj)){
+            for (target in colnames(game_adj)){
+                squad_adj[source,target] <- squad_adj[source,target] + game_adj[source,target]
+            }
+        }
+    }
+        
+    return(squad_adj)
 }
-
-probs <- diff(state_probabilities[,ncol(transition_matrix)])
-sum(probs*seq_along(probs))
 ```
 
 ```{r}
-transition_matrix
+MarkovExpectedGoals <- function(events, season_adjacency_matrix) {
+    
+    season_graph <- graph_from_adjacency_matrix(season_adjacency_matrix)
+    season_transition <- TransitionMatrix(season_graph)
+    seasonXST <- ExpectedScoringTime(season_transition)
+    avg_events_per_game <- nrow(events)/380
+    mXG <- sort(avg_events_per_game/seasonXST, decreasing=T)   
+    
+    return(mXG)
+}
+```
+
+```{r}
+GoalProbabilities <- function(season_adjacency_matrix) {
+    
+    season_graph <- graph_from_adjacency_matrix(season_adjacency_matrix)
+    season_transition <- TransitionMatrix(season_graph)
+    goal_probs <- sort(season_transition[,'Goal'],T)[2:nrow(season_transition)] * 100
+    
+    return(goal_probs)
+}
+```
+
+```{r}
+liverpool_adj <- SeasonAdjacencyMatrix(events,'Liverpool')
+
+```
+
+```{r}
+mXG <- MarkovExpectedGoals(events, liverpool_adj)
+```
+
+```{r}
+mXG
+```
+
+```{r}
+GoalProbabilities(liverpool_adj)
+```
+
+```{r}
+sort(liverpool_adj[,'Goal'],T)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+g <- GameGraph(events, match_id, home_or_away='Home')
 ```
 
 ```{r}
