@@ -724,7 +724,70 @@ for (league in leagues){
 ```
 
 ```{r}
-sort(mXG,T)
+mXG_df <- data.frame(sort(mXG,T))
+```
+
+```{r}
+
+```
+
+```{r}
+rownames(mXG_df) <- names(mXG)
+```
+
+```{r}
+mXG_df <- data.frame(sort(mXG,T))
+```
+
+```{r}
+rownames(mXG_df) <- nl
+```
+
+```{r}
+write.csv(mXG_df,'../data/processed/mXG.csv')
+```
+
+```{r}
+kde(mXG)
+```
+
+```{r}
+mXG <- sort(mXG,T)
+```
+
+```{r}
+rownames(mXG_df) <- names(sort(mXG,T)[1:20])
+```
+
+```{r}
+name_list <- names(sort(mXG,T))
+```
+
+```{r}
+nl <- c()
+```
+
+```{r}
+for (name in name_list){
+    
+    if (name %in% nl){
+        name <- paste0(name,'2')
+    }
+     
+    if (name %in% nl){
+        name <- paste0(name,'3')
+    }    
+    
+    nl <- append(nl, name)
+}
+```
+
+```{r}
+nl
+```
+
+```{r}
+mXG_df
 ```
 
 ```{r}
