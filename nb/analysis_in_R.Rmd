@@ -260,6 +260,10 @@ NationalResults <- function(nation) {
 ```
 
 ```{r}
+
+```
+
+```{r}
 correct_res <- read.csv('../data/league_results/England17-18.csv')
 ```
 
@@ -611,7 +615,8 @@ ExpectedScoringTime <- function(transition_matrix){
    
     for (i in (1:(ncol(transition_matrix)-2))){
         
-        state_probabilities <- matrix(NA,nrow=max_steps+1,ncol=ncol(transition_matrix),dimnames=list(0:max_steps,(ncol(transition_matrix)-1):0))
+        state_probabilities <- matrix(NA,nrow=max_steps+1,ncol=ncol(transition_matrix),
+                                      dimnames=list(0:max_steps,(ncol(transition_matrix)-1):0))
         vector <- rep(0,ncol(transition_matrix))
         
         vector[i] <- 1
@@ -669,10 +674,13 @@ MarkovExpectedGoals <- function(events, season_adjacency_matrix) {
     season_graph <- graph_from_adjacency_matrix(season_adjacency_matrix)
     season_transition <- TransitionMatrix(season_graph)
     seasonXST <- ExpectedScoringTime(season_transition)
+    seasonMXG <- 1/seasonXST
+    normalize <- seasonMXG/(mean(seasonMXG))
     avg_events_per_game <- nrow(events)/380
-    mXG <- sort(avg_events_per_game/seasonXST, decreasing=T)   
+    scale <- normalize * avg_events_per_game - avg_events_per_game
+    sorted <- sort(scale, decreasing=T)   
     
-    return(mXG)
+    return(sorted)
 }
 ```
 
@@ -688,28 +696,35 @@ GoalProbabilities <- function(season_adjacency_matrix) {
 ```
 
 ```{r}
-liverpool_adj <- SeasonAdjacencyMatrix(events,'Liverpool')
+leagueMXG <- function(events){
+    
+    all_mXG <- c()
+    teams <- unique(events$team)
 
+    for (team in teams){
+
+        season_adjacency_matrix <- SeasonAdjacencyMatrix(events, team)
+        mXG <- MarkovExpectedGoals(events, season_adjacency_matrix)
+
+        all_mXG <- append(all_mXG, mXG)     
+       
+    }   
+    
+    return(all_mXG)
+}
 ```
 
 ```{r}
-mXG <- MarkovExpectedGoals(events, liverpool_adj)
+mXG <- c()
+leagues = c('England','France','Germany','Italy','Spain')
+for (league in leagues){
+    events <- LoadAndScaleData(league)
+    mXG <- append(mXG, leagueMXG(events))
+}
 ```
 
 ```{r}
-mXG
-```
-
-```{r}
-GoalProbabilities(liverpool_adj)
-```
-
-```{r}
-sort(liverpool_adj[,'Goal'],T)
-```
-
-```{r}
-
+sort(mXG,T)
 ```
 
 ```{r}
