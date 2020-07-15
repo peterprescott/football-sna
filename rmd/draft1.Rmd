@@ -1,0 +1,148 @@
+---
+jupyter:
+  jupytext:
+    formats: ipynb,Rmd
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.4.2
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+# Random Walks along Social Networks: The Markovian Movement of a Stochastic Soccerball
+
+
+## Executive Summary
+
+
+## Introduction
+
+
+## Data
+
+
+
+
+
+## Methodology
+
+
+We begin by defining our terms.
+
+
+A *social* network is a network involving *persons*. I take as axiomatic the proposition that human beings are, individually and sometimes collectively, persons; we will not here entertain the question of whether such a designation should be extended to animal, divine, or robotic agents.
+
+
+A *network* is a graph in which some or all of the nodes, edges, and graph are *objects* with *attributes* besides those given in the description of the network as a graph. 
+
+
+A *graph* is an ordered tuple $G = (V,E)$, consisting of a set of *nodes* (or *vertices*) $V = \{v_{i}\}$, and a set of *edges* $E = \{e_{ij}\}$, where the edge $e_{ij}$ is the ordered pair $\{i,j\}$ representing some connection from $v_{i}$ to $v_{j}$. 
+
+
+Two nodes connected by an edge are said to be *adjacent* to each other. 
+
+
+An edge $e_{ii}$ connecting a node $v_{i}$ to itself is called a *loop*. 
+
+
+A graph is called *undirected* if $e_{ij} \iff e_{ji}$ (otherwise it is a *directed* graph), and *simple* if the edges are distinct and unrepeated (otherwise it is a *multigraph*). 
+
+
+A graph is *weighted* if there exists some function $w: E \mapsto \mathbb{R}$ assigning some weight value to each edge. 
+
+
+An unweighted multigraph can thus be viewed as a weighted simple graph by defining $w(e_{ij}) = |\{e \in E: e = e_{ij}\}| \in \mathbb{N_{0}}$, so that the weight of an edge is the number of times it is repeated.
+
+
+A weighted simple graph can be uniquely described by an *adjacency matrix*:
+$$
+M_{ij} = \begin{cases}
+    \begin{array}{ll}
+         w(e_{ij}), & e_{ij} \in E \\
+       0, & otherwise
+    \end{array}
+\end{cases}
+$$
+
+
+A *walk* of length L is a sequence of adjacent (but not necessarily distinct) nodes $(v_{0},...,v_{L})$.
+
+
+We also need some definitions from *probability theory* and *statistics*.
+
+
+A *sample space* $ \Omega = \{\omega_{i}\}$ is a set of possible *outcomes* of an *observation*.
+
+
+An *event* $F$ is some subset of $\Omega$, and the *event space* $\mathcal{F}$ is the set of subsets of $\Omega$. In particular, $\Omega \subset \mathcal{F}$.
+
+
+A *probability* $\mathbb{P}$ is a function $\mathbb{P}: \mathcal{F} \mapsto [0,1] \in \mathbb{R}$, such that $\sum\limits_{\omega_{i} \in \Omega}\mathbb{P}(\omega_{i}) = 1$. We can also talk about the *conditional probability* of an event $G$ given another event $F$, which we write $\mathbb{P}(G | F)$.
+
+
+A *random variable* is a function $X: \Omega \mapsto S$. If $S \subseteq \mathbb{R}$ then we also have the *expectation* $\mathbb{E}[X]$ and *variance* $\mathrm{Var}[X]$, but it is acceptable to have an $S \not\subset \mathbb{R}$.
+
+
+A *stochastic process* is an indexed set (that is, a *sequence*) of random variables, where the index commonly refers to points in time $t \in T$, which may be considered discretely (so $t \in \mathbb{N}_{0}$ ) or continuously (so $t \in \mathbb{R}_{ \ge 0}$ ). The range $S$ of a stochastic process $\{X(t,\omega):t\in T,\omega \in \Omega\}$ is called its *state space*, and the value $X_{t} = X(t)$ is its state at time $t$.
+
+
+A stochastic process has the *Markov property* if $\forall t \ge 0, \mathbb{P}(X_{t+1}=s| X_{0},...,X_{t}) = \mathbb{P}(X_{t+1}=s| X_{t})$; this means that future states are dependent only on the present state, regardless of the previous history of past states. Such a process can be called a Markov process, and we call the probability $\mathbb{P}(X_{t+1}=s_{j}|X_{t}=s_{i})$ the *transition probability* $p_{ij}$ .
+
+
+A Markov process is *time-homogenous* if the transition probabilities stay constant through time, ie. $\mathbb{P}(X_{n+1}=s_{i}|X_{n}=s_{j}) = \mathbb{P}(X_{m+1}=x|X_{m}=y) \forall m,n \in T$. If $S$ is countable, then the probability distribution of such a process can be described by its initial *distribution vector* $\pi_{0}$ and its *transition matrix* $P$, where each $i$th row is made up of the transition probabilities $p_{ij}$ and $\sum\limits_{j} p_{ij} = 1 \forall i$. Specifically, after $k$ transitions we have the distribution $\pi_{k} = \pi_{0}P^{k}$.
+
+
+If a Markov process develops in discrete time and takes a values from a discrete state space, then we call it a *Markov chain* and can straightforwardly draw it as a weighted simple graph by treating its transition matrix as an adjacency matrix. Conversely, we can transform an adjacency matrix $M$ into a transition matrix $P$ by defining the elements $p_{ij} := \frac{m_{ij} }{\sum\limits_{j}m_{ij}}$, so that each row sums to 1 as required. We can then picture the development of a Markov process as a *random walk* on the graph defined by its transition probabilities, noting that since the transition probabilities are not uniform this walk is *biased*.
+
+
+The *hitting time* $\tau_{R}$ of some state(s) $R \subset S$ is given by $\tau_{R} = min\{ t \ge 0 \colon X_{t} \in R \}$.
+
+
+
+
+
+A discrete-time *stochastic process* $\{X_{n} : n \ge 0 \}$ on a countable set $S$ is a collection of $S$-valued random variables defined on a probability space $(\Omega,\mathcal{F},\mathbb{P})$. The $\mathbb{P}$ is a probability measure on $\mathcal{F}$, the field of subsets of the sample-space $\Omega$. The set $S$ is the *state space* of the process, and the value $X_{n} \in S$ is the *state* of the process at *time* $n$.
+
+A stochastic process has the *Markov property* if $\forall n \ge 0$, 
+
+
+[@RSerfozo2009]
+
+
+https://stats.stackexchange.com/questions/64167/how-to-define-sample-space-for-discrete-random-variable
+
+https://math.stackexchange.com/questions/2042801/state-space-and-sample-space-difference/2322791
+
+sample space, state space, event space
+
+sample space is the set of all possible outcomes, 
+
+event space, the set of sets of outcomes
+
+probability mass function $p: \Omega \mapsto [0,1]$ such that $\sum\limits_{\omega \in \Omega} p(\omega) = 1$
+
+
+$(\Omega,\mathcal{F},\mathbb{P})$
+
+
+"a network can be defined as a graph in which nodes and/or edges have attributes"
+
+
+how to define social
+
+
+
+For our purposes, the 
+
+
+## Results
+
+
+## Conclusion
+
+
+## Bibliography
