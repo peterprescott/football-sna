@@ -74,7 +74,7 @@ Figure 4: YouTube Clip showing successful conclusion of possession sequence
 
 ## Methodology
 
-### Graph Theory Definitions
+### Graph Theoretic Foundations
 
 *Social network analysis* uses the tools of mathematical graph theory to analyse social structures. We therefore begin by defining several necessary theoretical terms.
 
@@ -102,9 +102,9 @@ $$
 
 There are then a large variety of different graph metrics which can be calculated, including in particular an ever-increasing number of measures of *centrality*.
 
-### Graph Theory Application
+### Graphing a Team's Possession Network
 
-We consider the possession sequences of a football match as *walks* of the football across a social graph in which the nodes are players (considered either individually or collectively), and the connecting edges are defined by the movement of the ball, as it travels from player to player. We can then construct the underlying multigraph for any particular possession sequence (as in Figure i), or indeed for the whole game.
+We consider the possession sequences of a football match as *walks* of the football across a social graph in which the nodes are players (considered either individually or collectively), and the connecting edges are defined by the movement of the ball, as it travels from player to player. We can then construct the underlying graph for any particular possession sequence (as in Figure i), or indeed for the whole game.
 
 Figure 5
 <img src="../figures/PossessionGraph.png">
@@ -123,18 +123,17 @@ Figure 7
 
 
 
-### Probability and Statistics
-
+### Probabilistic Walks on a Graph
 
 We then also need some definitions from *probability theory* and *statistics*. [@RSerfozo2009a]
 
 A *sample space* $\Omega = \{\omega_{i}\}$ is the set of possible *outcomes* of an *observation*. If we are observing who has the ball, then the sample space is the set of players on the pitch. An *event* $F$ is some subset of $\Omega$, and the *event space* $\mathcal{F}$ is the set of subsets of $\Omega$. In particular, $\Omega \subset \mathcal{F}$. 
 
-To illustrate the difference between the sample space and the event space, we could observe whether the *home team* is in possession of the ball. The outcome of observing who has the ball will not be a whole team, but merely some particular player $\omega_{x}$, whom we could call $h_{x}$ if he is on the home team, or $a_{x}$ if he is on the away team. So our sample space $\Omega = \{\omega_{i}\} = \{h_{i}\} + \{a_{i}\}$, and the *event* that the home team has possession $H = \{h_{i}\} \in \mathcal{F}$.
+To illustrate the difference between the sample space and the event space, we could observe whether the *home team* is in possession of the ball. The outcome of observing who has the ball will not be a whole team, but merely some particular player $\omega_{x}$, whom we could call $h_{x}$ if he is on the home team, or $a_{x}$ if he is on the away team. So our sample space $\Omega = \{\omega_{i}\} = \{h_{i}\} \cup \{a_{i}\}$, and the *event* that the home team has possession $H = \{h_{i}\} \in \mathcal{F}$.
 
 A *probability* $\mathbb{P}$ is then a function $\mathbb{P}: \mathcal{F} \mapsto [0,1] \in \mathbb{R}$, such that $\sum\limits_{\omega_{i} \in \Omega}\mathbb{P}(\omega_{i}) = 1$ and $\mathbb{P}(\O) = 0$. We can also talk about the *conditional probability* of an event $X$ given another event $Y$, which we write $\mathbb{P}(X | Y)$.
 
-A *random variable* is a function $X: \Omega \mapsto S$. If $S \subseteq \mathbb{R}$ then we also have the *expectation* $\mathbb{E}[X]$ and *variance* $\mathrm{Var}[X]$, but it is acceptable to have an $S \not\subset \mathbb{R}$. Again, to illustrate what we mean -- the number of goals in the match could be considered as a random variable, but so could our previous question of which player has the ball at a particular time.
+A *random variable* is a function $X: \Omega \mapsto S$. If $S \subseteq \mathbb{R}$ then we also have the *expectation* $\mathbb{E}[X]$ and *variance* $\mathrm{Var}[X]$, but it is acceptable to have an $S \not\subset \mathbb{R}$. Again, to illustrate what we mean -- the number of goals in the match could be considered as a real-valued random variable, and we could talk about the expectation and variation of the number of goals; but this is not the case for the question of which player has the ball at a particular time, though this also is a random variable.
 
 A *stochastic process* is an indexed set (that is, a *sequence*) of random variables, where the index commonly refers to points in time $t \in T$, which may be considered discretely (so $t \in \mathbb{N}_{0}$ ) or continuously (so $t \in \mathbb{R}_{ \ge 0}$ ). The range $S$ of a stochastic process $\{X(t,\omega):t\in T,\omega \in \Omega\}$ is called its *state space*, and the value $X_{t}$ is its *state* at time $t$.
 
@@ -147,18 +146,34 @@ If a Markov process develops in discrete time and takes a values from a discrete
 Figure 8
 <img src="../figures/TransitionMatrixHome.png">
 
+### Calculating Markovian Expected Goals
+
 In Figure 8 we show the heatmap of the Transition Matrix derived from the Adjacency Matrix shown in Figure 6. There we showed only the adjacency counts for the starting eleven, but now we include the subsitutes, as well as treating the 'Opposition' collectively as a single node. Most significantly, we now include a 'Goal' as a node. In every other case where the ball goes out of play, we ignore the details of whether it was for a corner, throw-in, offside, or foul, and simply consider the ball to have moved from whichever player had the ball to the opposition. (Consequently, the players which the Adjacency Matrix indicates get the ball most often from the opposition are generally full-backs who take throw-ins, rather than players whose challenges are actually winning the ball, as one might initially suppose). But a goal is of unique significance, and for a social network analysis of football to be anything more than a diverting curiosity, we need to be able to say something meaningful about what a team's possession graph tells us about the likelihood of goals.
 
-To do this, as we have said, we treat a goal as a node in its own right; in particular, in the terms of Markov theory, we treat it as an *absorbing state*. Clearly a football match continues after a goal is scored, but from the perspective of our model, the match is considered as a series of stochastic processes which end and immediately start anew if and when a goal is scored.
+To do this, as we have said, we treat a goal as a node in its own right; in particular, in the terms of Markov theory, we treat it as an *absorbing state* which loops back on itself with certain probability. Clearly a football match continues after a goal is scored, but from the perspective of our model, the match is considered as a series of stochastic processes which end and immediately start anew if and when a goal is scored. This allows us to calculate the expected *hitting time* of a goal, given that any particular player has the ball. 
 
-This allows us to calculate the expected *hitting time* of a goal, given that any particular player has the ball. 
+The hitting time $\tau_{s}$ of some state $s \in S$ is given by $\tau_{s} := min\{ t \ge 0 \colon X_{t} = s \}$, the earliest time at which the process reaches that state.  
 
-The hitting time $\tau_{R}$ of some state(s) $R \subset S$ is given by $\tau_{R} = min\{ t \ge 0 \colon X_{t} \in R \}$.
+Given an initial distribution $\pi_{0}$, we know that after $k$ transitions, the state $\pi_{k} = \pi_{0}P^{k}$. 
 
+We can define the *state vector* $\delta$ of any particular state $s{i}$ as
+$$
+\delta_{j} := \begin{cases}
+    \begin{array}{ll}
+    	1, & i=j \\
+	0, & \mathrm{otherwise}
+    \end{array}
+\end{cases}
+$$
 
-### Statistical Application
-The extent of a sample space depends very much on the nature of its corresponding observation: if we are observing who has the ball at a particular moment, then the sample space will consist of the players; if we are considering 
+The probability $\mathbb{P}(X_{k}=s)$ is then given by the dot product $\langle \pi_{k}, \delta \rangle$.
 
+If $s_{i}$ is an absorbing state, then the probability that it is reached *for the first time* is given by  $p_{k}:= \langle \pi_{k}, \delta \rangle - \langle \pi_{k-1}, \delta \rangle$. 
+
+If the expectation of the hitting time is finite it can then be approximated directly by iterating up to some large $K$:
+$$\mathbb{E}[\tau_{s}] = \sum_{k=0}^\infty kp_k \approx \sum_{k=0}^K kp_k$$ 
+
+Thus we can quantify, for each player on the team, the expected number of events there will be before the team scores a goal. We invert this to give a measure of the expected number of goals; and scale it by the team's average number of events per game, and by the average player's expected goals values, and call this measure *Markov Expected Goals* (MXG).
 
 ## Results
 
