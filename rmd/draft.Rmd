@@ -33,7 +33,7 @@ The dataset is provided by WyScout, one of a growing number of companies in the 
 
 ### Preprocessing
 
-I used Python to convert this into a *tidy* dataframe [@HWickham2014], that could then be analyzed and visualized using R. For the sake of reproducible research, all code is attached as appendices, as well as available on Github. 
+I used Python to convert this into a *tidy* dataframe [@HWickham2014], which I then analyzed and visualized using R. For the sake of reproducible research [@RPeng2011], all code is attached as appendices, as well as available on Github. 
 
 As part of this preprocessing stage I also labelled each event according first to its *in-play sequence*, and then its *possession sequence*. An in-play sequence ends when the ball goes out of play, as indicated by the subsequent event having the *eventName* 'Free Kick' (a category which includes throw-ins and corners, as well as actual free-kicks given for fouls or offsides); or by the final two events (the shot and the attempted save) being labelled with the *tag* 'Goal'. (Although every goal is followed by a 'free kick' from the centre of the pitch, this never seems to be included in the event logs, presumably because they are created from camera footage which focusses on the goal celebrations and tends to miss the immediate restart of play after a goal). 
 
@@ -133,9 +133,7 @@ Figure 8
 
 ### Calculating Markovian Expected Goals
 
-In Figure 8 we show the heatmap of the Transition Matrix derived from the Adjacency Matrix shown in Figure 6. There we showed only the adjacency counts for the starting eleven, but now we include the subsitutes, as well as treating the 'Opposition' collectively as a single node. Most significantly, we now include a 'Goal' as a node. In every other case where the ball goes out of play, we ignore the details of whether it was for a corner, throw-in, offside, or foul, and simply consider the ball to have moved from whichever player had the ball to the opposition. (Consequently, the players which the Adjacency Matrix indicates get the ball most often from the opposition are generally full-backs who take throw-ins, rather than players whose challenges are actually winning the ball, as one might initially suppose). But a goal is of unique significance, and for a social network analysis of football to be anything more than a diverting curiosity, we need to be able to say something meaningful about what a team's possession graph tells us about the likelihood of goals.
-
-To do this, as we have said, we treat a goal as a node in its own right; in particular, in the terms of Markov theory, we treat it as an *absorbing state* which loops back on itself with certain probability. Clearly a football match continues after a goal is scored, but from the perspective of our model, the match is considered as a series of stochastic processes which end and immediately start anew if and when a goal is scored. This allows us to calculate the expected *hitting time* of a goal, given that any particular player has the ball. 
+In Figure 8 we show the heatmap of the Transition Matrix derived from the Adjacency Matrix shown in Figure 6. There we showed only the adjacency counts for the starting eleven, but now we include the subsitutes, as well as treating the 'Opposition' collectively as a single node. Most significantly, we now include a 'Goal' as a node. In particular, in the terms of Markov theory, we treat it as an *absorbing state* which loops back on itself with certain probability. This allows us to calculate the expected *hitting time* of a goal, given that any particular player has the ball. 
 
 The hitting time $\tau_{s}$ of some state $s \in S$ is given by $\tau_{s} := min\{ t \ge 0 \colon X_{t} = s \}$, the earliest time at which the process reaches that state.  
 
@@ -160,11 +158,28 @@ $$\mathbb{E}[\tau_{s}] = \sum_{k=0}^\infty k\pi_k \approx \sum_{k=0}^K k\pi_k$$
 
 Thus we can quantify, for each player on the team, the expected number of events there will be before the team scores a goal. We invert this to give a measure of the expected number of goals; and scale it by the team's average number of events per game, we call this measure *Markovian Expected Goals* (MXG). We then scale this by the team's mean expected goals values to give a *Relative MXG* value, so that values can be compared fairly across teams to see which individual players contribute the most to their teams' goalscoring chances.
 
-## Results
+### Results
 
-T
+The 
 
 ## Conclusion
 
+We have here focussed on the attacking contribution a player makes towards his team's goal-scoring capability, but we could equally consider the defensive aspect by letting the absorbing state be the possibility that the opposition score.
+
+One apparent flaw of this analysis is that it pays no attention to the *spatial* dynamics of the game. But it would be fairly straightforward to develop the analysis articulated here to also take into account a player's location on the pitch when he plays the ball. Rather than simply representing the players, the nodes' state space could instead be the Cartesian product of players with some set of discrete areas of the pitch, say $\{\Delta, \Phi, \Xi \}$ could represent the Defensive Half, Attacking Half, and Attacking Penalty Area respectively. One could simply add the spatial indicator to the player name at the preprocessing stage, and the rest of the analysis would then proceed as described here.
+
+But the major weakness is one inherent in the data itself -- although the event-log dataset offers a wealth of information when compared to the manual *notational analysis* first developed by Charles Reep in the 1950s [@RPollard2002], a convincing analysis of football will only really be possible with data that includes the positions of off-the-ball players, as well as on-the-ball events. Such data can be captured [eg. @SPettersenEtAl2014], but is not yet widely (at least openly) available.
+
+
+## Acknowledgments
+
 
 ## Bibliography
+
+
+
+## Appendix 1: Analysis in R
+
+
+
+## Appendix 2: Preprocessing in Python
