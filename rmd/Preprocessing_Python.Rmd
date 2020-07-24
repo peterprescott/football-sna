@@ -1,0 +1,233 @@
+---
+jupyter:
+  jupytext:
+    formats: ipynb,Rmd
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.4.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+import json
+import numpy as np
+
+import warnings
+warnings.filterwarnings('ignore')
+```
+
+```{python}
+tag_df = pd.read_csv('../data/raw/tagcodes.csv')
+tag_dict = dict(zip(tag_df.Tag, tag_df.Description))
+```
+
+```{python}
+def load_json(file):
+    "Load raw JSON data."
+    with open(f'../data/raw/{file}.json','r') as f:
+        return json.loads(f.read().replace('\\\\','\\').encode('utf-8'))
+```
+
+```{python}
+def preprocess(national_league):
+    "Create processed CSV from raw JSON for WyScout national league event-logs."
+    
+    # load JSON event-logs
+    events = load_json(f'events_{national_league}')
+    
+    # create dataframe from JSON event-logs
+    ev_df = pd.DataFrame(events)
+    
+    # decode tags
+    for i in range(6):
+        ev_df[f'tag{i}'] = ev_df['tags'].str[i].str['id'].map(tag_dict).str.lower()
+
+    # decode player ids
+    players = load_json('players')
+    players_dict = dict(zip(pd.DataFrame(players).wyId,pd.DataFrame(players).shortName))
+    ev_df['player'] = ev_df['playerId'].map(players_dict)
+    
+    # decode team ids
+    teams = load_json('teams')
+    teams_dict = dict(zip(pd.DataFrame(teams).wyId,pd.DataFrame(teams).name))
+    ev_df['team'] = ev_df['teamId'].map(teams_dict)
+    
+    # unpack location and target
+    ev_df['location'] = ev_df['positions'].str[0]
+    ev_df['target'] = ev_df['positions'].str[1]
+    
+    # create simpler dataframe
+    e_df = ev_df[['matchId','eventSec','matchPeriod','team','location','target','player','eventName','subEventName','tag0','tag1','tag2','tag3','tag4','tag5']]
+    e_df['notes'] = e_df[['tag0','tag1','tag2','tag3','tag4','tag5']].values.tolist()
+    e_df['tags'] = e_df['notes'].astype(str)
+    e_df['accurate'] = e_df.tags.str.contains('accurate')
+    e_df['accurate'] = np.where(e_df.tags.str.contains('not accurate'), 0, e_df.accurate)
+    e_df.drop(columns=['tag0','tag1','tag2','tag3','tag4','tag5','notes'],inplace=True) 
+    
+    # label in_play sequences
+    play = 0
+    plays = []
+    next_action = []
+    match_play = []
+    matchId = e_df.iloc[0].matchId
+    for i in range(len(e_df)):
+        if i>1:
+            row_minus2 = row_minus1
+        if i>0:
+            row_minus1 = row
+        row = e_df.iloc[i]
+        if i == 0:
+            row_minus1 = row
+            row_minus2 = row
+
+        if row.eventName == 'Free Kick':
+            # when the ball goes 'out of play', the game resumes with a 'free kick' (here includes Throw-Ins)
+            play += 1
+        elif 'goal' in row_minus2.tags and 'goal' in row_minus1.tags:
+            # (there are generally two events marked goal -- the shot and the attempted save)
+            play +=1
+
+        if row.matchId == matchId:
+            pass
+        else:
+            play = 0
+            matchId = row.matchId
+        plays.append(play)
+        match_play.append(f'{matchId}-{play}')
+
+    e_df['in_play'] = pd.Series(plays)
+    e_df['match_play'] = pd.Series(match_play)
+    
+    # label possession sequences
+    ps_sequence = np.full(len(e_df),'0000000000000000000000000000000000')
+    played_to = np.full(len(e_df), '                                    ')
+    to_team = np.full(len(e_df), '                                       ')
+
+    for match in e_df.matchId.unique():
+        match_df = e_df.loc[e_df.matchId == match]
+        for team in match_df.team.unique():
+            for play in match_df.in_play.unique():
+                team_play_df = match_df.loc[match_df.in_play == play].loc[match_df.team == team]
+                possession_sequence = 0
+                for i in range(len(team_play_df)):
+                    if i>0:
+                        previous_row = row
+
+                    row = team_play_df.iloc[i]
+
+
+                    if i > 0:
+                        if row.location != target:
+                            possession_sequence += 1
+                            played_to[previous_row.name] = 'Opposition' 
+                            to_team[previous_row.name] = 'Opposition'
+                        else:
+                            played_to[previous_row.name] = row.player
+                            to_team[previous_row.name] = row.team
+                    team_name = team.split(' ')
+                    team_abbr = ''
+                    for word in team_name:
+                        team_abbr = team_abbr + word[:3]
+                    ps_sequence[row.name] = f'{match}-{play}-{team_abbr}-{possession_sequence}'
+                    target = row.target
+
+    e_df['possession'] = ps_sequence            
+    e_df['played_to'] = played_to
+    e_df['to_team'] = to_team
+    
+    e_df['played_to'] = np.where(e_df['played_to'] == '                                    ', 'Opposition', e_df['played_to'])
+    e_df['to_team'] = np.where(e_df['to_team'] == '                                       ', 'Opposition', e_df['to_team'])
+    
+    # unpack x and y coorinates
+    for foo in ('location','target'):
+        for goo in ('x','y'):
+            e_df[f'{foo}_{goo}'] = e_df[foo].str[goo]
+
+    # change target coordinates of goal to inside goal
+    e_df['target_x'] = np.where((e_df.tags.str.contains("'goal'")) & (e_df.eventName != 'Save attempt'),
+                                100, e_df.target_x )
+    e_df['target_y'] = np.where((e_df.tags.str.contains("'goal'")) & (e_df.eventName != 'Save attempt'),
+                                50, e_df.target_y )
+
+    e_df['subEventName'] = np.where((e_df.tags.str.contains("'goal'")) & (e_df.eventName != 'Save attempt'),
+                                'Goal', e_df.subEventName )
+
+    e_df['eventName'] = np.where(e_df['eventName'] == 'Others on the ball', 'On the Ball', e_df['eventName'])
+
+    e_df['eventName'] = np.where(e_df['eventName'] == 'Duel', 'Challenge', e_df['eventName'])
+
+    e_df['played_to'] = np.where(e_df.subEventName == 'Goal', 'Goal', e_df.played_to)
+    e_df['to_team'] = np.where(e_df.subEventName == 'Goal', 'Goal', e_df.to_team)
+
+    # change location coordinates of goal kick
+    e_df['location_x'] = np.where((e_df.subEventName == 'Goal kick'), 5, e_df.location_x)
+    e_df['location_y'] = np.where((e_df.subEventName == 'Goal kick'), 50, e_df.location_y)
+
+    # add time in minutes and seconds
+    e_df['minute'] = e_df.eventSec//60
+    e_df.minute = e_df.minute.astype(int)
+    e_df['seconds'] = e_df.eventSec % 60
+    e_df.seconds = e_df.seconds.astype(int)
+    e_df['time'] = e_df.minute.astype(str).str.zfill(2) + ':' + e_df.seconds.astype(str).str.zfill(2)
+    e_df.drop(columns=['minute','seconds'],inplace=True)
+
+    e_df.drop(columns=['location','target'], inplace=True)
+    e_df.rename(columns={'player':'source','played_to':'target'},inplace=True)
+
+    # include starting lineup data
+    matches = load_json(f'matches_{national_league}')
+    match_df = pd.DataFrame(matches)
+    match_lineups = {}
+    for match in match_df.wyId.unique():
+        match_lineups[match] = {}
+        for team in match_df.loc[match_df.wyId == match].teamsData.values[0].keys():
+            match_lineups[match][teams_dict[int(team)]] = list(pd.Series(pd.DataFrame(match_df.loc[
+                match_df.wyId == match].teamsData.str[str(team)].str['formation'].str['lineup'].values[0]).playerId.values).map(players_dict))
+            
+    def firstXI(row):
+        return row.source in match_lineups[row.matchId][row.team]
+
+    e_df['FirstXI'] = e_df.apply(firstXI, axis=1)
+
+    # include home_or_away data
+    h_a_map = {}
+    for match in match_df.wyId.unique():
+        h_a_map[match] = {}
+        for team in match_df.loc[match_df.wyId == match].teamsData.values[0].keys():
+            status = match_df.loc[match_df.wyId==match].teamsData.str[str(team)].str['side'].values[0].capitalize()
+            h_a_map[match][team] = status
+
+    def home_or_away(row):
+        return h_a_map[row.matchId][str(row.teamId)]
+
+    e_df['home_or_away'] = ev_df.apply(home_or_away, axis=1)
+    e_df['to_team'] = np.where(e_df.to_team == e_df.team, e_df.home_or_away, e_df.to_team)
+    opposition = {'Home':'Away','Away':'Home'}
+    e_df['to_team'] = np.where(e_df.to_team == 'Opposition', e_df.home_or_away.map(opposition), e_df.to_team)
+    e_df['to_team'] = np.where(e_df.tags.str.contains('own goal'), 'Own Goal', e_df.to_team)
+    whose_goal = {'Home':'Home Goal', 'Away':'Away Goal'}
+    e_df['to_team'] = np.where(e_df.to_team == 'Goal', e_df.home_or_away.map(whose_goal), e_df.to_team)
+    whose_own_goal = {'Home':'Away Goal', 'Away':'Home Goal'}
+    e_df['to_team'] = np.where(e_df.to_team == 'Own Goal', e_df.home_or_away.map(whose_own_goal), e_df.to_team)
+
+    e_df.drop(columns=['tags','in_play'],inplace=True)
+
+    e_df.to_csv(f'../data/processed/{national_league}FootballLeague2017-18.csv')
+```
+
+```{python}
+national_leagues = ('England','France','Germany','Italy','Spain')
+```
+
+```{python}
+for league in national_leagues:
+    preprocess(league)
+```
+``

@@ -1,6 +1,7 @@
 ---
 jupyter:
   jupytext:
+    formats: ipynb,Rmd
     text_representation:
       extension: .Rmd
       format_name: rmarkdown
@@ -12,31 +13,30 @@ jupyter:
     name: ir
 ---
 
+# Executive Summary
+
+
+# Introduction
+
 ```{r}
-library(plyr)
-library(dplyr)
-library(ggplot2)
-library(MASS)
-library(cowplot)
-library(forcats)
-library(ggforce)
-library(ggrepel)
-library(scales)
-library(tidyr)
-library(xts)
-library(zoo)
+library(plyr) # data manipulation @HWickham2009
+library(dplyr) # data manipulation @HWickham@2017
+library(knitr) # dynamic report generation @YXie2012
+library(igraph) # for graph/network analysis @GCsardiTNepusz2006
+library(ggraph) # graph visualization in the style of ggplot @TPederson2016a
+library(netrankr) # network centrality @DSchoch2015
+library(ggplot2) # for plotting visualizations @HWickham2007
+library(ggforce) # adds functionality to ggplot2, eg. geom_circle @TPederson2016b
+library(ggrepel) # adds 'repellent' non-overlapping labels to ggplot @KSlowikowski2016
+library(pheatmap) # prettier heat maps
+library(RColorBrewer) # color palettes
+library(docstring) # allows ?help to display function descriptions analogous to Pythonic docstrings
 ```
 
 ```{r}
-library(ggraph)
-```
-
-```{r}
-library(igraph)
-```
-
-```{r}
-soccerPitch <- function(lengthPitch = 105, widthPitch = 68, arrow = c("none", "r", "l"), title = NULL, subtitle = NULL, theme = c("light", "dark", "grey", "grass")) {
+DrawPitch <- function(lengthPitch=105, widthPitch=68, arrow=c("none", "r", "l"), theme=c("light", "dark", "grey", "grass")) {
+    #' Draw regulation football pitch with penalty areas and centre circle.
+    #' Adapted from https://github.com/JoGall/soccermatics
   
   # define colours by theme
   if(theme[1] == "grass") {
@@ -72,8 +72,6 @@ soccerPitch <- function(lengthPitch = 105, widthPitch = 68, arrow = c("none", "r
   }
   lwd <- 0.5
   
-  # outer border (t,r,b,l)
-#   border <- c(10, 6, 5, 6)
   border <- c(5, 5, 5, 5)
       
   # mowed grass lines
@@ -96,130 +94,977 @@ soccerPitch <- function(lengthPitch = 105, widthPitch = 68, arrow = c("none", "r
     geom_segment(aes(x = lengthPitch/2, y = 0, xend = lengthPitch/2, yend = widthPitch), col = colPitch, lwd = lwd) +
     # penalty arcs
     geom_arc(aes(x0= 11, y0 = widthPitch/2, r = 9.15, start = pi/2 + 0.9259284, end = pi/2 - 0.9259284), col = colPitch, lwd = lwd) +
-    geom_arc(aes(x0 = lengthPitch - 11, y0 = widthPitch/2, r = 9.15, start = pi/2*3 - 0.9259284, end = pi/2*3 + 0.9259284), col = colPitch, lwd = lwd) +
+    geom_arc(aes(x0 = lengthPitch - 11, y0 = widthPitch/2, r = 9.15, start = pi/2*3 - 0.9259284, end = pi/2*3 + 0.9259284), 
+             col = colPitch, lwd = lwd) +
     # penalty areas
     geom_rect(aes(xmin = 0, xmax = 16.5, ymin = widthPitch/2 - 20.15, ymax = widthPitch/2 + 20.15), fill = NA, col = colPitch, lwd = lwd) +
-    geom_rect(aes(xmin = lengthPitch - 16.5, xmax = lengthPitch, ymin = widthPitch/2 - 20.15, ymax = widthPitch/2 + 20.15), fill = NA, col = colPitch, lwd = lwd) +
+    geom_rect(aes(xmin = lengthPitch - 16.5, xmax = lengthPitch, ymin = widthPitch/2 - 20.15, ymax = widthPitch/2 + 20.15), 
+              fill = NA, col = colPitch, lwd = lwd) +
     # penalty spots
     geom_circle(aes(x0 = 11, y0 = widthPitch/2, r = 0.25), fill = colPitch, col = colPitch, lwd = lwd) +
     geom_circle(aes(x0 = lengthPitch - 11, y0 = widthPitch/2, r = 0.25), fill = colPitch, col = colPitch, lwd = lwd) +
     # six yard boxes
     geom_rect(aes(xmin = 0, xmax = 5.5, ymin = (widthPitch/2) - 9.16, ymax = (widthPitch/2) + 9.16), fill = NA, col = colPitch, lwd = lwd) +
-    geom_rect(aes(xmin = lengthPitch - 5.5, xmax = lengthPitch, ymin = (widthPitch/2) - 9.16, ymax = (widthPitch/2) + 9.16), fill = NA, col = colPitch, lwd = lwd) +
+    geom_rect(aes(xmin = lengthPitch - 5.5, xmax = lengthPitch, ymin = (widthPitch/2) - 9.16, ymax = (widthPitch/2) + 9.16), 
+              fill = NA, col = colPitch, lwd = lwd) +
     # goals
     geom_rect(aes(xmin = -2, xmax = 0, ymin = (widthPitch/2) - 3.66, ymax = (widthPitch/2) + 3.66), fill = NA, col = colPitch, lwd = lwd) +
-    geom_rect(aes(xmin = lengthPitch, xmax = lengthPitch + 2, ymin = (widthPitch/2) - 3.66, ymax = (widthPitch/2) + 3.66), fill = NA, col = colPitch, lwd = lwd) +
+    geom_rect(aes(xmin = lengthPitch, xmax = lengthPitch + 2, ymin = (widthPitch/2) - 3.66, ymax = (widthPitch/2) + 3.66), 
+              fill = NA, col = colPitch, lwd = lwd) +
     coord_fixed() +
     theme(rect = element_blank(), 
           line = element_blank(),
           axis.text = element_blank(),
           axis.title = element_blank())
-  
-#   # add arrow
-#   if(arrow[1] == "r") {
-#     p <- p + 
-#       geom_segment(aes(x = 0, y = -2, xend = lengthPitch / 3, yend = -2), colour = arrowCol, size = 1.5, arrow = arrow(length = unit(0.2, "cm"), type="closed"), linejoin='mitre')
-#   } else if(arrow[1] == "l") {
-#     p <- p + 
-#       geom_segment(aes(x = lengthPitch, y = -2, xend = lengthPitch / 3 * 2, yend = -2), colour = arrowCol, size = 1.5, arrow = arrow(length = unit(0.2, "cm"), type="closed"), linejoin='mitre')
-#   }
-  
-#   # add title and/or subtitle
-#   theme_buffer <- ifelse(theme[1] == "light", 0, 4)
-#   if(!is.null(title) & !is.null(subtitle)) {
-#     p <- p +
-#       cowplot::draw_text(title, 
-#                          x = 0, y = widthPitch + 9, hjust = 0, vjust = 1,
-#                          size = 15, fontface = 'bold', col = colText) +
-#       cowplot::draw_text(subtitle, 
-#                          x = 0, y = widthPitch + 4.5, hjust = 0, vjust = 1,
-#                          size = 13, col = colText) +
-#       theme(plot.margin = unit(c(-0.525,-0.9,-0.7,-0.9), "cm"))
-#   } else if(!is.null(title) & is.null(subtitle)) {
-#     p <- p +
-#       cowplot::draw_text(title, 
-#                          x = 0, y = widthPitch + 4.5, hjust = 0, vjust = 1,
-#                          size = 15, fontface = 'bold', col = colText) +
-#       theme(plot.margin = unit(c(-0.9,-0.9,-0.7,-0.9), "cm"))
-#   } else if(is.null(title) & !is.null(subtitle)) {
-#     p <- p +
-#       cowplot::draw_text(subtitle, 
-#                          x = 0, y = widthPitch + 4.5, hjust = 0, vjust = 1,
-#                          size = 13, col = colText) +
-#       theme(plot.margin = unit(c(-0.9,-0.9,-0.7,-0.9), "cm"))
-#   } else if(is.null(title) & is.null(subtitle)){
-#     p <- p +
-#       theme(plot.margin = unit(c(-1.2,-0.9,-0.7,-0.9), "cm"))
-#   }
-  
-  
+    
+  # add arrow
+  if(arrow[1] == "r") {
+    p <- p + 
+      geom_segment(aes(x = 0, y = -2, xend = lengthPitch / 3, yend = -2), 
+                   colour = arrowCol, size = 1.5, arrow = arrow(length = unit(0.2, "cm"), type="closed"), linejoin='mitre')
+  } else if(arrow[1] == "l") {
+    p <- p + 
+      geom_segment(aes(x = lengthPitch, y = -2, xend = lengthPitch / 3 * 2, yend = -2), 
+                   colour = arrowCol, size = 1.5, arrow = arrow(length = unit(0.2, "cm"), type="closed"), linejoin='mitre')
+  }
+      
   return(p)
-  
+}
+```
+
+# Data
+
+```{r}
+LoadAndScaleData <- function(national_league) {
+    #' Load preprocessed event logs for given national league.
+    
+    events <- read.csv(paste0('../data/processed/', national_league, '.csv'))
+
+    x_scale <- 105
+    y_scale <- 68
+
+    events$location_x <- events$location_x/100 * x_scale
+    events$target_x <- events$target_x/100 * x_scale
+
+    events$location_y <- y_scale - (events$location_y/100 * y_scale)
+    events$target_y <- y_scale - (events$target_y/100 * y_scale)
+    
+    return(events)
+}
+
+```
+
+```{r}
+events <- LoadAndScaleData('England')
+```
+
+```{r}
+events[1:10,]
+```
+
+```{r}
+LeagueResults <- function(league){
+    #' Calculate results and table for given national league.
+
+    teams <- sort(unique(league$team))
+
+    home_score <- matrix(0, nrow=length(teams), ncol=length(teams))
+    colnames(home_score) <- teams
+    rownames(home_score) <- teams
+
+    away_score <- home_score
+
+    league_table <- matrix(0, nrow=length(teams), ncol=9)
+    rownames(league_table) <- teams
+    colnames(league_table) <- c('Pos','Pld','W','D','L','GF','GA','GD','Pts')
+    
+    for (m in unique(league$matchId)){
+
+        match <- league[league$matchId==m,]
+        home_team <- unique(match[match$home_or_away=='Home',]$team)
+        away_team <- unique(match[match$home_or_away=='Away',]$team)
+        home_goals <- nrow(match[match$to_team=='Home Goal',])
+        away_goals <- nrow(match[match$to_team=='Away Goal',])
+
+        home_score[home_team, away_team] <- home_goals
+        away_score[home_team, away_team] <- away_goals
+
+        if (home_goals > away_goals){
+            league_table[home_team,'W'] <- league_table[home_team,'W'] + 1
+            league_table[away_team,'L'] <- league_table[away_team,'L'] + 1
+        } else if (away_goals > home_goals){
+            league_table[home_team,'L'] <- league_table[home_team,'L'] + 1
+            league_table[away_team,'W'] <- league_table[away_team,'W'] + 1    
+        } else if (home_goals == away_goals) {
+            league_table[home_team,'D'] <- league_table[home_team,'D'] + 1
+            league_table[away_team,'D'] <- league_table[away_team,'D'] + 1
+        }
+
+        league_table[home_team,'GF'] <- league_table[home_team,'GF'] + home_goals
+        league_table[away_team,'GF'] <- league_table[away_team,'GF'] + away_goals
+        league_table[home_team,'GA'] <- league_table[home_team,'GA'] + away_goals
+        league_table[away_team,'GA'] <- league_table[away_team,'GA'] + home_goals
+
+        for (team in c(home_team, away_team)){
+            league_table[team,'GD'] <- league_table[team,'GF'] - league_table[team,'GA']
+            league_table[team,'Pts'] <- 3*league_table[team,'W'] + 1*league_table[team,'D']
+            league_table[team,'Pld'] <- league_table[team,'Pld'] + 1
+        }
+
+    }
+    
+    league_table <- league_table[order(-league_table[,'Pts']),]
+    
+    league_table[,'Pos'] <- 1:20
+
+    return(league_table)
 }
 ```
 
 ```{r}
-events <- read.csv('../data/processed_events_England.csv')
-
-x_scale <- 105
-y_scale <- 68
-
-events$location_x <- events$location_x/100 * x_scale
-events$target_x <- events$target_x/100 * x_scale
-
-events$location_y <- y_scale - (events$location_y/100 * y_scale)
-events$target_y <- y_scale - (events$target_y/100 * y_scale)
+prem <- LeagueResults(events)
 ```
 
 ```{r}
-game <- events[events$matchId == '2500032',]
+pl <- as.data.frame(prem)
 ```
 
 ```{r}
-game_events <- game[game$eventName == 'Pass'| game$eventName == 'Shot' | game$eventName == 'Duel' | game$eventName == 'Free Kick',]
+pl['Team'] <- rownames(pl)
 ```
 
 ```{r}
-soccerPitch(theme='grey') + 
-    geom_point(data = game_events, 
-           aes(location_x , location_y, fill=eventName), pch=21, alpha=0.5, size=2 ) + 
-    theme(legend.position='bottom', legend.title = element_blank()) +
-    scale_fill_manual(values=c("red", "black", "blue", 'white'))
+pl2 <- as.data.frame(pl[,c(10,2:9)])
 ```
 
 ```{r}
-id <-  '2500032-91-Liv-0'
-# id <- best_goal_sequences[1]
-data <- events[events$possession == id,]
-# 534 is brighton vs bournemouth
-# data <- events[events$possession == '2499759-46-Bri&HovAlb-0',]
-# data <- events[events$possession == '2499889-18-Liv-0',]
-# data <- events[events$possession == '2499774-85-ManCit-0',] #2500065-23-ManCit-1',]#2499913-77-Liv-0',]
-
-soccerPitch(theme='grass') + geom_point(data = data,
-               aes(location_x , location_y)) + 
-    geom_label_repel(data = data, aes(location_x, location_y, label = source), label.padding=0.1, size=2.3, alpha=1) +
- geom_curve(data = data,
-              aes(x = location_x, xend = target_x, y = location_y, yend = target_y*.99, col = X), show.legend=FALSE, size=1, alpha = 1)
-
+rownames(pl2) <- c()
 ```
-
-<img src="../figures/youtube_clip.gif">
 
 ```{r}
-nodes <- unique(c(as.character(data$source),as.character(data$target)))
-edges <- data.frame(data$source, data$target)
-g <- graph_from_data_frame(d=edges, vertices=nodes, directed=TRUE)
-ggraph(g, layout='linear') + 
-    geom_edge_arc(aes(start_cap = label_rect(node1.name), 
-                       end_cap = label_rect(node2.name)), 
-                  arrow=arrow(length=unit(4,'mm')), 
-                  color='grey', width=0.7, fold=F) +
-    geom_edge_loop(color='grey', linetype='dashed') +
-    geom_node_point(size=2, color='black', fill='white') +
-    geom_node_text(aes(label = name), repel=T, angle=90, hjust=2, ) +
-    theme_void()
+pl2[1:5,]
 ```
+
+```{r}
+prem[1:5,]
+```
+
+```{r}
+NationalResults <- function(nation) {
+ 
+    data <- LoadAndScaleData(nation)
+    results <- LeagueResults(data)
+    return(results)
+}
+
+```
+
+```{r}
+
+```
+
+```{r}
+correct_res <- read.csv('../data/league_results/England17-18.csv')
+```
+
+```{r}
+correct_res
+```
+
+```{r}
+france <- NationalResults('France')
+germany <- NationalResults('Germany')
+italy <- NationalResults('Italy')
+spain <- NationalResults('Spain')
+```
+
+```{r}
+premiership <- NationalResults('England')
+```
+
+```{r}
+ShowMatchEvents <- function(events, match_id, team_name, home_or_away='Home', flip=F) {
+    #' Visualize events on pitch for given match and team.
+    
+    # select match
+    game <- events[events$matchId==match_id,]
+    goals <- game[game$subEventName=='Goal',]
+    
+    # note teams
+    teams <- unique(game$team)
+
+    # limit events to team specified by name or home/away
+    if(!missing(team_name)){
+        game <- game[game$team==team_name,]
+        home_or_away <- unique(game$home_or_away)
+    } else {
+        game <- game[game$home_or_away==home_or_away,]
+        team_name <- unique(game$team)
+    }
+    
+    # note opposition
+    opposition <- teams[teams!=team_name]
+    
+    # get score
+    team_score <- table(goals$team)[team_name]
+    opposition_score <- table(goals$team)[opposition]
+    
+    # flip coordinates if desired
+    if (flip==T) {
+        game$location_x <- 105 - game$location_x
+        game$location_y <- 68 - game$location_y
+        direction_of_play = 'l'
+    } else { 
+        direction_of_play = 'r'
+    }
+    
+    # limit attention to main events
+    game_events <- game[game$eventName == 'Pass'| 
+                        game$eventName == 'Shot' | 
+                        game$eventName == 'On the Ball' | 
+                        game$eventName == 'Challenge' | 
+                        game$eventName == 'Free Kick',]
+
+    # draw pitch
+    p <- DrawPitch(theme='grey', arrow=direction_of_play) + 
+        geom_point(data = game_events, 
+               aes(location_x , location_y, fill=eventName, shape=eventName), pch=21, alpha=0.6, size=2 ) + 
+        geom_point(data=game_events[game_events$subEventName=='Goal',], 
+                   aes(location_x, location_y), shape=13, size=5) +
+        geom_label_repel(data=game_events[game_events$subEventName=='Goal',], 
+                         aes(location_x, location_y, label = paste0(source,'(',matchPeriod,' ',time,')')), label.padding=0.1, size=2.3, alpha=1) +
+        theme(legend.direction='horizontal', legend.position=c(0.5,0)) +
+        scale_fill_manual(values=c("red", "black", 'white', "yellow", 'blue'), name='Event Type') +
+        ggtitle(paste('Event Map:', team_name,'playing',home_or_away,'versus',opposition,'(',team_score,'-',opposition_score,')'))
+    
+    return(p)
+    
+}
+```
+
+```{r}
+#away vs Crystal Palace
+match_id <- '2500032'
+```
+
+```{r}
+# vs man city
+match_id <- '2499943'
+```
+
+```{r}
+ShowMatchEvents(events, match_id, home_or_away='Home')
+ShowMatchEvents(events, match_id, home_or_away='Away', flip=T)
+```
+
+```{r}
+ShowPassesAndShots <- function(events, match_id, team_name, home_or_away='Home', flip=F) {
+    #' Visualize passes on pitch for given match and team.
+    
+    # select match
+    game <- events[events$matchId==match_id,]
+    goals <- game[game$subEventName=='Goal',]
+    
+    # note teams
+    teams <- unique(game$team)
+
+    # limit events to team specified by name or home/away
+    if(!missing(team_name)){
+        game <- game[game$team==team_name,]
+        home_or_away <- unique(game$home_or_away)
+    } else {
+        game <- game[game$home_or_away==home_or_away,]
+        team_name <- unique(game$team)
+    }
+    
+    # note opposition
+    opposition <- teams[teams!=team_name]
+    
+    # get score
+    team_score <- table(goals$team)[team_name]
+    opposition_score <- table(goals$team)[opposition]
+    
+    # flip coordinates if desired
+    if (flip==T) {
+        game$location_x <- 105 - game$location_x
+        game$target_x <- 105 - game$target_x
+        game$location_y <- 68 - game$location_y
+        game$target_y <- 68 - game$target_y
+        direction_of_play = 'l'
+    } else { 
+        direction_of_play = 'r'
+    }
+    
+    # limit attention to passes and shots
+    passes <- game[game$eventName == 'Pass' & game$team == team_name,]
+    shots <- game[(game$eventName=='Shot' | game$subEventName=='Goal') & game$team==team_name,]
+    
+    # draw pitch
+    p <- DrawPitch(theme='grass', arrow=direction_of_play) + 
+        geom_segment(data=na.exclude(passes), 
+                     aes(x=location_x, y=location_y, xend=target_x, yend=target_y, color=subEventName), 
+                     alpha=0.6, arrow = arrow(length = unit(0.1,"cm"))) +
+        geom_label_repel(data=game[game$subEventName=='Goal',], 
+                     aes(location_x, location_y, label = paste0(source,'(',matchPeriod,' ',time,')')), label.padding=0.1, size=2.3, alpha=1) + 
+        geom_segment(data=na.exclude(shots), 
+                 aes(x=location_x, y=location_y, xend=target_x, yend=target_y, color=subEventName), 
+                 alpha=0.7, arrow = arrow(length = unit(0.1,"cm"))) +
+        theme(legend.position=c(0.5,-0.01), legend.direction='horizontal',
+              legend.background=element_rect(fill='#008000', linetype='solid')) +
+        scale_color_manual(values=c("red", "black", 'blue', 'orange', "yellow", 'grey', 'purple', 'white','brown'), name='Pass Type') +
+        ggtitle(paste('Pass Map:',team_name,'playing',home_or_away,'versus',opposition,'(',team_score,'-',opposition_score,')'))
+    
+    return(p)
+} 
+```
+
+```{r}
+ShowPassesAndShots(events, match_id, home_or_away='Home')
+ShowPassesAndShots(events, match_id, home_or_away='Away', flip=T)
+```
+
+# Methodology
+
+```{r}
+PassNetwork <- function(events, match_id, team_name, team_colour='red', home_or_away='Home', flip=F, lower_threshold=1, high_threshold=10) {
+    #' Draw Pass Map of First XI with nodes placed on mean (x,y) pitch-coordinates.
+
+    game <- events[events$matchId == match_id,]
+    goals <- game[game$subEventName=='Goal',]
+    
+    # note teams
+    teams <- unique(game$team)
+
+    # limit events to team specified by name or home/away
+    if(!missing(team_name)){
+        game <- game[game$team==team_name,]
+        home_or_away <- unique(game$home_or_away)
+    } else {
+        game <- game[game$home_or_away==home_or_away,]
+        team_name <- unique(game$team)
+    }
+    
+    # note opposition
+    opposition <- teams[teams!=team_name]
+    
+    # get score
+    team_score <- table(goals$team)[team_name]
+    opposition_score <- table(goals$team)[opposition]
+    
+    
+    firstXI <- game[game$FirstXI == 'True',]
+    mean_positions <- firstXI[firstXI$location_x>0 & firstXI$location_y>0 & firstXI$location_x<105 & firstXI$location_y<68,] %>% 
+        group_by(team, matchId, source) %>%
+          dplyr::summarise(x_mean = mean(location_x), y_mean = mean(location_y)) %>% 
+          ungroup() %>%
+          mutate(team = as.factor(team), id = as.factor(matchId)) %>%
+          as.data.frame()
+
+
+    pass_counts <- ddply(data.frame(game$source, game$target),.(game.source,game.target),nrow)
+    names(pass_counts) <- c('source','target','passcount')
+    step1 <- merge(mean_positions, pass_counts, by='source')
+    step2 <- step1[,c(1,4,5,7,8)]
+    names(step2)[2:3] <- c('source_x','source_y')
+    names(mean_positions)[3] <- 'target'
+    step3 <- merge(mean_positions, step2, by='target')
+    team <- step3[step3$team==team_name,]
+
+    if (flip==T) {
+        team$source_x <- 105 - team$source_x
+        team$x_mean <- 105 - team$x_mean
+        team$source_y <- 68 - team$source_y
+        team$y_mean <- 68 - team$y_mean
+        mean_positions$x_mean <- 105 - mean_positions$x_mean
+        mean_positions$y_mean <- 68 - mean_positions$y_mean
+    }
+
+    return (DrawPitch() +
+        geom_segment(data=team[team$passcount>=lower_threshold,], size=1, colour=team_colour,
+                     aes(x=source_x, y=source_y, xend=x_mean, yend=y_mean, alpha=passcount)) +
+        geom_segment(data=team[team$passcount>=high_threshold,], size=1.5, colour='black',
+                     aes(x=source_x, y=source_y, xend=x_mean, yend=y_mean, alpha=passcount)) +
+        geom_label_repel(data = mean_positions[mean_positions$team==team_name,], 
+                         aes(x_mean, y_mean, label = target), label.padding=0.1, size=2.3, alpha=1) +
+        geom_point(data=team, aes(x_mean, y_mean,), fill=team_colour, colour='black', pch=21, size=3) +
+        ggtitle(paste('Passing Network:',team_name,'playing',home_or_away,'versus',opposition,'(',team_score,'-',opposition_score,')')) +
+        theme(legend.position=c(0.5,0.07), legend.direction='horizontal'))
+    
+}
+```
+
+```{r}
+PassNetwork(events, match_id, team_colour='red')
+PassNetwork(events, match_id, team_colour='blue', home_or_away='Away', flip=T)
+```
+
+```{r}
+2499943
+```
+
+```{r}
+
+```
+
+```{r}
+GameGraph <- function(events, match_id, team_name, home_or_away='Home') {
+    #' Return Possession Graph for given Match and Team.
+    
+    game <- events[events$matchId == match_id,]
+    game <- game[game$source!='' & game$target!='' & game$target!='nan',]
+    
+     # note teams
+    teams <- unique(game$team)
+
+    # limit events to team specified by name or home/away
+    if(!missing(team_name)){
+        team_game <- game[game$team==team_name,]
+        home_or_away <- unique(team_game$home_or_away)
+    } else {
+        team_game <- game[game$home_or_away==home_or_away,]
+        team_name <- as.character(unique(team_game$team))
+    }
+
+    opposition_game <- game[game$team != team_name,]
+    opposition_team <- as.character(unique(opposition_game$team))
+
+    team_nodes <- unique(c(as.character(team_game$source),as.character(team_game$target)))
+    team_edges <- data.frame(team_game$source, team_game$target)
+    team_graph <- graph_from_data_frame(d=team_edges, vertices=team_nodes, directed=TRUE)
+    team_adj <- as.matrix(team_graph[])
+
+    possession_seqs <- unique(team_game$possession)
+
+    seq_start <- c()
+
+    for (pseq in possession_seqs){
+        if (sum(team_game$possession==pseq)>1){
+            player <- as.character(team_game[team_game$possession==pseq,][1,]$source)
+            if (player!='' & player!='nan'){
+                seq_start <- append(seq_start, player)
+            }
+        }
+    }
+
+    start_counts <- table(as.factor(seq_start))
+
+    for (i in (2:(length(start_counts)-1))){
+        team_adj[nrow(team_adj)-1,][names(start_counts[i])] <- as.numeric(start_counts[i])
+    }
+
+    opposition_status <- as.character(unique(opposition_game$home_or_away))
+    opp_to_opp <- as.numeric(summary(game[game$team != team_name,]$to_team)[opposition_status])
+
+    opp_nodes <- unique(c(as.character(opposition_game$source),as.character(opposition_game$target)))
+    opp_edges <- data.frame(opposition_game$source, opposition_game$target)
+    opp_graph <- graph_from_data_frame(d=opp_edges, vertices=opp_nodes, directed=TRUE)
+    opp_adj <- as.matrix(opp_graph[])
+
+    opp_to_opp <- sum(opp_adj[,ncol(opp_adj)-1])
+    team_adj[(nrow(team_adj)-1),(ncol(team_adj)-1)] <- opp_to_opp
+
+    team_status <- unique(team_game$home_or_away)
+    opposition_own_goals <- as.numeric(nrow(game[game$home_or_away==opposition_status & game$to_team==paste(team_status,'Goal'),]))
+    team_adj[(nrow(team_adj)-1),(ncol(team_adj))] <- opposition_own_goals
+
+    team_graph <- graph_from_adjacency_matrix(team_adj, mode='directed')
+    
+    team_graph$team <- team_name
+    team_graph$opposition <- opposition_team
+    team_graph$status <- home_or_away
+
+    return(team_graph)
+}
+```
+
+```{r}
+AdjacencyMatrix <- function(graph){
+    #' Return Adjacency Matrix for Graph
+    
+    return(as.matrix(graph[]))
+}
+```
+
+```{r}
+TransitionMatrix <- function(graph){
+    #' Return Transition Matrix for Graph considered as time-homogeneous Markov Process
+    
+    matrix <- as.matrix(graph[])
+
+    for (i in 1:nrow(matrix)){
+        matrix[i,] <- matrix[i,]/sum(matrix[i,])
+    }
+
+    matrix[nrow(matrix),ncol(matrix)] <- 1
+    matrix[nrow(matrix),] <- rep(0, ncol(matrix))
+    
+    # treat 'Goal' as absorbtion state
+    matrix[nrow(matrix),ncol(matrix)] <- 1
+    
+    return(matrix)
+}
+```
+
+```{r}
+ExpectedScoringTime <- function(transition_matrix){
+    #' Calculate expected scoring time based on transition matrix.
+    
+    max_steps <- 10000
+#     transition_matrix <- TransitionMatrix(GameGraph(events, match_id))
+    hitting_times <- rep(0,(ncol(transition_matrix)-2))
+   
+    for (i in (1:(ncol(transition_matrix)-2))){
+        
+        state_probabilities <- matrix(NA,nrow=max_steps+1,ncol=ncol(transition_matrix),
+                                      dimnames=list(0:max_steps,(ncol(transition_matrix)-1):0))
+        vector <- rep(0,ncol(transition_matrix))
+        
+        vector[i] <- 1
+        state_probabilities[1,] <- vector
+
+        for ( kk in 1:max_steps ) {
+            state_probabilities[kk+1,] <- t(transition_matrix)%*%state_probabilities[kk,]
+        }
+
+        probs <- diff(state_probabilities[,ncol(transition_matrix)])
+        hitting_time <- sum(probs*seq_along(probs))
+        
+        hitting_times[i] <- hitting_time
+    }
+    
+    names(hitting_times) <- names(transition_matrix[1,])[1:(nrow(transition_matrix)-2)]
+    
+    return(hitting_times)
+   
+}
+```
+
+```{r}
+SeasonAdjacencyMatrix <- function(events, team) {
+    
+    players <- unique(events[events$team==team & events$source!='' & events$target!='',]$source)
+    n <- length(players) + 2
+    squad_adj <- matrix(0,nrow=n,ncol=n)
+    rownames(squad_adj) <- c(as.character(players), 'Opposition', 'Goal')
+    colnames(squad_adj) <- rownames(squad_adj)
+    
+    games <- unique(events[events$team==team,]$matchId)
+    
+    for (game in games){
+        
+        # get graph and adjacency matrix for game
+        game_graph <- GameGraph(events, game, team)
+        game_adj <- AdjacencyMatrix(game_graph)
+        
+        # add values of game adjacency matrix to full-season matrix
+        for (source in rownames(game_adj)){
+            for (target in colnames(game_adj)){
+                squad_adj[source,target] <- squad_adj[source,target] + game_adj[source,target]
+            }
+        }
+    }
+        
+    return(squad_adj)
+}
+```
+
+```{r}
+MarkovExpectedGoals <- function(events, season_adjacency_matrix) {
+    
+    season_graph <- graph_from_adjacency_matrix(season_adjacency_matrix)
+    season_transition <- TransitionMatrix(season_graph)
+    seasonXST <- ExpectedScoringTime(season_transition)
+    seasonMXG <- 1/seasonXST
+    normalize <- seasonMXG/(mean(seasonMXG))
+    avg_events_per_game <- nrow(events)/380
+    scale <- normalize * avg_events_per_game - avg_events_per_game
+    sorted <- sort(scale, decreasing=T)   
+    
+    return(sorted)
+}
+```
+
+```{r}
+GoalProbabilities <- function(season_adjacency_matrix) {
+    
+    season_graph <- graph_from_adjacency_matrix(season_adjacency_matrix)
+    season_transition <- TransitionMatrix(season_graph)
+    goal_probs <- sort(season_transition[,'Goal'],T)[2:nrow(season_transition)] * 100
+    
+    return(goal_probs)
+}
+```
+
+```{r}
+leagueMXG <- function(events){
+    
+    all_mXG <- c()
+    teams <- unique(events$team)
+
+    for (team in teams){
+
+        season_adjacency_matrix <- SeasonAdjacencyMatrix(events, team)
+        mXG <- MarkovExpectedGoals(events, season_adjacency_matrix)
+
+        all_mXG <- append(all_mXG, mXG)     
+       
+    }   
+    
+    return(all_mXG)
+}
+```
+
+```{r}
+mXG <- c()
+leagues = c('England','France','Germany','Italy','Spain')
+for (league in leagues){
+    events <- LoadAndScaleData(league)
+    mXG <- append(mXG, leagueMXG(events))
+}
+```
+
+```{r}
+mXG_df <- data.frame(sort(mXG,T))
+```
+
+```{r}
+
+```
+
+```{r}
+rownames(mXG_df) <- names(mXG)
+```
+
+```{r}
+mXG_df <- data.frame(sort(mXG,T))
+```
+
+```{r}
+rownames(mXG_df) <- nl
+```
+
+```{r}
+write.csv(mXG_df,'../data/processed/mXG.csv')
+```
+
+```{r}
+kde(mXG)
+```
+
+```{r}
+mXG <- sort(mXG,T)
+```
+
+```{r}
+rownames(mXG_df) <- names(sort(mXG,T)[1:20])
+```
+
+```{r}
+name_list <- names(sort(mXG,T))
+```
+
+```{r}
+nl <- c()
+```
+
+```{r}
+for (name in name_list){
+    
+    if (name %in% nl){
+        name <- paste0(name,'2')
+    }
+     
+    if (name %in% nl){
+        name <- paste0(name,'3')
+    }    
+    
+    nl <- append(nl, name)
+}
+```
+
+```{r}
+nl
+```
+
+```{r}
+mXG_df
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+g <- GameGraph(events, match_id, home_or_away='Home')
+```
+
+```{r}
+MatrixHeatMap <- function(matrix, number_format='%.d', title='Matrix Heatmap'){
+    #' Show Matrix as HeatMap
+    
+    hm <- pheatmap(matrix,color=brewer.pal(15,'YlGnBu'),cluster_rows=F,cluster_cols=F,legend=F,
+                    display_numbers=T,number_format=number_format,fontsize_number=9,angle_col='315',
+                    main=title)   
+    
+    return(hm)
+}
+```
+
+```{r}
+MatrixHeatMap(
+    AdjacencyMatrix(g)[1:11,1:11]
+
+)
+```
+
+```{r}
+MatrixHeatMap(
+    AdjacencyMatrix(
+        GameGraph(events, match_id, home_or_away='Away'))[1:11,1:11]
+)
+```
+
+```{r}
+MatrixHeatMap(
+    TransitionMatrix(
+        GameGraph(events, match_id, home_or_away='Home')), 
+    number_format='%.2f',
+    title=''
+)
+```
+
+```{r}
+MatrixHeatMap(
+    TransitionMatrix(
+        GameGraph(events, match_id, home_or_away='Away')), 
+    number_format='%.2f',
+    title=''
+)
+```
+
+```{r}
+GoalSeqs <- function(events, match_id) {
+    match <- events[events$matchId==match_id,]
+    goals <- match[match$subEventName=='Goal',]
+    goal_seqs <- unique(goals$possession)   
+    return(goal_seqs)
+}
+```
+
+```{r}
+TabulateSequence <- function(events, possession_sequence) {
+    # Return a markdown table starting from the row before a possession sequence begins, and continuing until it ends.
+    
+    start <- min(events[events$possession == possession_sequence,]$X)
+    stop <- max(events[events$possession == possession_sequence,]$X) + 1
+    table <- events[start:stop,]
+    df <- data.frame(table$matchPeriod, table$time, table$team, table$source, table$subEventName)
+    names(df) <- c('Half', 'Time', 'Team', 'Event Description', 'Player')
+    
+    return(kable(df))
+}
+```
+
+```{r}
+sequence <- '2500032-91-Liv-0'
+```
+
+```{r}
+TabulateSequence(events, sequence)
+```
+
+```{r}
+SequenceOnPitch <- function(events, possession_sequence){
+    #' Draw Possession Sequence on Pitch
+    
+    data <- events[events$possession == possession_sequence,]
+
+    p <- DrawPitch(theme='grass') + 
+        geom_label_repel(data = data, aes(location_x, location_y, label = paste(source,time)), label.padding=0.1, size=2.3, alpha=1) +
+        geom_curve(data = data, aes(x = location_x, xend = target_x, y = location_y, yend = target_y*.99, col = X), 
+                   show.legend=FALSE, size=1, alpha = 1) +
+        geom_point(data = data, aes(location_x , location_y, shape=eventName), size=2) + 
+        ggtitle(paste0(nrow(data),'-part ', unique(data$team)[1], ' Possession Sequence ending with ', 
+                       data[nrow(data),]$subEventName, ' by ', data[nrow(data),]$source))  +
+        theme(legend.position=c(0.5,0.08), legend.direction='horizontal', legend.title=element_blank())
+    
+    return(p)
+}
+```
+
+```{r}
+SequenceOnPitch(events, sequence)
+```
+
+youtube clip
+<img src="../figures/youtube_clip.gif" width='700'>
+
+```{r}
+SequenceGraph <- function(events, possession_sequence){
+    #' Return Graph of Possession Sequence
+    
+    data <- events[events$possession == possession_sequence,]
+    data <- data[data$source!='' & data$target!='nan',]
+    nodes <- unique(c(as.character(data$source),as.character(data$target)))
+    edges <- data.frame(data$source, data$target)
+    g <- graph_from_data_frame(d=edges, vertices=nodes, directed=TRUE)
+    g$id <- possession_sequence
+    g$data <- data
+    g$team <- as.character(unique(data$team))
+    
+    return(g)
+}
+```
+
+```{r}
+VisualizeGraph <- function(possession_sequence_graph) {
+    #' Visualize Possession Sequence as Linear Graph with Looping Edges
+    
+    g <- possession_sequence_graph
+    data <- possession_sequence_graph$data
+    
+    visualization <- ggraph(g, 'linear') + 
+        geom_edge_arc(aes(color=data$eventName), 
+                      arrow=arrow(length=unit(4,'mm')), 
+                      fold=F,
+                     width=1) +
+        geom_edge_loop(aes(color=data$eventName),
+                      width=1) +
+        geom_node_point(color='black', 
+                        size=2,
+                        alpha=0.5) +
+        geom_node_text(aes(label = name), 
+                        repel=T, 
+                        angle=90, hjust=2, ) +
+        scale_edge_colour_manual(
+            values=c('indianred3', 'wheat4', 'grey', 'grey30',
+                    'red','blue','green','orange','purple','brown','pink'
+                    ),
+            name='Event Type') +
+        theme_void()
+   
+    return(visualization)
+    
+}
+```
+
+```{r}
+g <- SequenceGraph(events, sequence)
+```
+
+```{r}
+VisualizeGraph(g)
+```
+
+```{r}
+GetGraphMetrics <- function(possession_graph) {
+    #' Return basic metrics for given Graph
+    
+    g <- possession_graph
+    path_metrics <- c(g$id, g$team, length(V(g)), length(E(g)), 
+                      diameter(g), mean_distance(g), edge_density(g, loops=T), 
+                      girth(g)$girth, transitivity(g), authority_score(g)$value, hub_score(g)$value)
+    names(path_metrics) <- c('Label', 'Team', 'Nodes', 'Edges', 'Diameter', 'Mean_Distance', 
+                             'Edge_Density', 'Girth', 'Transitivity', 'Authority_Score', 'Hub_Score')
+    
+    return(path_metrics)
+}
+```
+
+```{r}
+GetNodeMetrics <- function(possession_graph) {
+    #' Return metrics for each Node of given Graph
+    
+    g <- possession_graph
+    df <- data.frame(page_rank(g)$vector)
+    names(df) <- 'pagerank'
+    df$in_degree <- degree(g, mode='in')
+    df$out_degree <- degree(g, mode='out')
+    df$eccentricity <- eccentricity(g)
+    df$closeness <- closeness(g)
+    df$betweenness <- betweenness(g)
+    df$norm_betweenness <- betweenness(g, normalized=T)
+    df$alpha_centrality <- alpha_centrality(g)
+    df$power_centrality <- power_centrality(g)
+    df$eigen_centrality <- eigen_centrality(g)$vector
+    df$authority <- authority_score(g)$vector
+    df$hub <- hub_score(g)$vector
+    
+    return(df)
+}
+```
+
+```{r}
+GetEdgeMetrics <- function(possession_graph) {
+    #' Return metrics for each Edge of given Graph
+    
+    g <- possession_graph
+    df <- data.frame(as_edgelist(g))
+    names(df) <- c('Source','Target')
+    df$sequence <- 1:length(E(g))
+    df$edge_betweenness <- edge_betweenness(g)
+    
+    return(df)
+}
+```
+
+```{r}
+GetGraphMetrics(g)
+```
+
+```{r}
+GetNodeMetrics(match_graph)
+```
+
+```{r}
+GetEdgeMetrics(g)
+```
+
+```{r}
+sequence2 <- '2499858-18-Liv-5'
+```
+
+```{r}
+TabulateSequence(sequence2)
+```
+
+```{r}
+SequenceOnPitch(sequence2)
+```
+
+<img src='../figures/mane_vs_stoke.gif'>
+
+```{r}
+g2 <- SequenceGraph(sequence2)
+VisualizeGraph(g2)
+```
+
+```{r}
+GetGraphMetrics(g2)
+```
+
+```{r}
+sequence3 <-  '2499889-18-Liv-0'
+```
+
+```{r}
+SequenceOnPitch(sequence3)
+```
+
+```{r}
+g3 <- SequenceGraph(sequence3)
+VisualizeGraph(g3)
+```
+
+```{r}
+GetGraphMetrics(g3)
+```
+
+<img src="../figures/youtube_clip2.gif">
 
 ```{r}
 
