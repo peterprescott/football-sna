@@ -1,7 +1,7 @@
 ---
 jupyter:
   jupytext:
-    formats: ipynb,Rmd
+    formats: nb//ipynb,rmd//Rmd
     text_representation:
       extension: .Rmd
       format_name: rmarkdown
@@ -334,13 +334,16 @@ GoalSeqs <- function(events, match_id) {
 
 ```{r}
 TabulateSequence <- function(events, possession_sequence) {
-    # Return a markdown table starting from the row before a possession sequence begins, and continuing until it ends.
+    #' Return table starting from row before possession sequence begins, 
+    #' and continuing until it ends.
     
     start <- min(events[events$possession == possession_sequence,]$X)
     stop <- max(events[events$possession == possession_sequence,]$X) + 1
     table <- events[start:stop,]
-    df <- data.frame(table$matchPeriod, table$time, table$team, table$source, table$subEventName)
-    names(df) <- c('Half', 'Time', 'Team', 'Event Description', 'Player')
+    df <- data.frame(table$matchPeriod, table$time, table$team, 
+                     table$source, table$subEventName, table$possession)
+    names(df) <- c('Half', 'Time', 'Team', 'Player', 
+                   'Event Description', 'Sequence ID' )
     
     return(df)
 }
@@ -895,13 +898,35 @@ Top20MXG <- function(){
     #' Save CSV with top 20 players by MXG score.
     
     d <- read.csv('../tables/MXG.csv')
+
     top <- d[d$Degree>1000,]
     rownames(top) <- c()
     top['Loops/Degree'] <- top$Loops/top$Degree
     top['Goals/Degree'] <- top$Goals/(top$Degree)
     t <- top[c('Player','Team','Degree','Goals',
                'Goals/Degree','Loops','Loops/Degree','MXG')]
-    write.csv(t[1:20,], '../tables/2.csv',row.names=F)
+
+    t[,'Goals/Degree'] <- formatC(signif(t[,'Goals/Degree']*100,digits=3), 
+                              digits=3,format="fg", flag="#")
+
+    t[,'Goals (% Degree)'] <- paste0(
+                            as.character(t$Goals),
+                            ' (',
+                            as.character(t[,'Goals/Degree']),'%)')
+
+    t$Degree <- as.character(prettyNum(t$Degree, big.mark=',',scientific=F))
+
+    t[,'Loops/Degree'] <- formatC(signif(t[,'Loops/Degree']*100,digits=3), 
+                              digits=3,format="fg", flag="#")
+
+    t[,'Loops (% Degree)'] <- paste0(
+                            as.character(t$Loops),
+                            ' (',
+                            as.character(t[,'Loops/Degree']),'%)')
+
+    t <- t[1:20,c(1,2,8,3,10,9)]   
+    
+    write.csv(t[1:20,], '../tables/Top20.csv',row.names=F)
 }
     
 ```

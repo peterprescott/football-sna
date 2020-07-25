@@ -1,0 +1,14 @@
+{
+	'eventId' : 8,
+	'subEventName' : Simple pass,
+	'tags' : [{'id': 1801}],
+	'playerId' : 70122,
+	'positions' : [{'y': 48, 'x': 72}, {'y': 11, 'x': 89}],
+	'matchId' : 2499784,
+	'eventName' : Pass,
+	'teamId' : 1611,
+	'matchPeriod' : 1H,
+	'eventSec' : 2070.194395,
+	'subEventId' : 85,
+	'id' : 192223643,
+}

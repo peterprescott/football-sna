@@ -1,7 +1,7 @@
 ---
 jupyter:
   jupytext:
-    formats: ipynb,Rmd
+    formats: nb//ipynb,rmd//Rmd
     text_representation:
       extension: .Rmd
       format_name: rmarkdown
@@ -227,7 +227,8 @@ national_leagues = ('England','France','Germany','Italy','Spain')
 ```
 
 ```{python}
-for league in national_leagues:
-    preprocess(league)
+if __name__ == '__main__':
+    for league in national_leagues:
+        preprocess(league)
 ```
-``
+

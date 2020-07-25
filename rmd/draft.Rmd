@@ -20,7 +20,8 @@ jupyter:
 ## Executive Summary
 
 Association football is the world's most popular sport [@IPalacios-Huerta2004] and a multibillion dollar industry [@Deloitte2019]. 
-Statistical analysis of the sport was pioneered more than fifty years ago [@CReepBenjamin1968], but has only recently begun to make a more widespread impact [@PCintiaEtAl2015]. Such analysis is of potential interest to coaches and scouts working professionally within the game, journalists and media commentators explaining the game, and gamblers and bookmakers putting money on the game. In this paper I explain how Social Network Analysis [@SWassermanEtAl1994] can provide the tools to model a football team's ball-possession as a dynamic probabilistic system, and hence how we can quantify the contribution of each player to the team's goal-scoring capability.
+Statistical analysis of the sport was pioneered more than fifty years ago [@CReepBenjamin1968], but has only recently begun to make a more widespread impact [@PCintiaEtAl2015]. Such analysis is of potential interest to coaches and scouts working professionally within the game, journalists and media commentators explaining the game, and gamblers and bookmakers putting money on the game. In this paper I build upon previous work applying Social Network Analysis [@TGrund2012]
+and Markov Modelling [@JPena2014] to football data, and introduce an original metric for quantifying the contribution of each player to a team's goal-scoring capability.
 
 </small>
 
@@ -34,7 +35,7 @@ In this paper, I develop a rigorous account of a football match as a stochastic 
 
 ### JSON Event-logs
 
-The dataset is provided by WyScout, one of a growing number of companies in the football analytics industry, and is available from FigShare.com [@LPappalardoMassucco2019]. It includes more than three million *event-logs* for every 2017-18 match from the five major European leagues, in JSON format (see Figure 1), with  the details of players, teams, and informative tags (such as the crucial 'Goal') numerically encoded. Each event is associated with an event type (such as 'Shot', 'Pass' or 'Free Kick'), identified with a player, and includes a nested array of the locational *positions* of the event itself and its target.
+The dataset is provided by WyScout, and is available from FigShare.com [@LPappalardoMassucco2019]. It includes more than three million *event-logs* for every 2017-18 match from the five major European leagues, in JSON format (see Figure 1), with  the details of players, teams, and informative tags (such as the crucial 'Goal') numerically encoded. Each event is associated with an event type (such as 'Shot', 'Pass' or 'Free Kick'), identified with a player, and includes a nested array of the locational *positions* of the event itself and its target.
 
 <details open>
 <summary>Figure 1</summary>
@@ -59,15 +60,15 @@ Figure 1: Example of Event-Log in JSON Format
 
 ### Preprocessing
 
-I used Python to convert this into a *tidy* dataframe [@HWickham2014], which I then analyzed and visualized using R. For the sake of reproducible research [@RPeng2011], all code is attached as appendices, as well as available on Github. 
+I used Python to convert this into a *tidy* dataframe [@HWickham2014], which I then analyzed and visualized using R. For the sake of reproducible research [@RPeng2011], all code is attached as appendices. 
 
 As part of this preprocessing stage I also labelled each event according first to its *in-play sequence*, and then its *possession sequence*. An in-play sequence ends when the ball goes out of play, as indicated by the subsequent event having the *eventName* 'Free Kick' (a category which includes throw-ins and corners, as well as actual free-kicks given for fouls or offsides); or by the final two events (the shot and the attempted save) being labelled with the *tag* 'Goal'. (Although every goal is followed by a 'free kick' from the centre of the pitch, this never seems to be included in the event logs, presumably because they are created from camera footage which focusses on the goal celebrations and tends to miss the immediate restart of play after a goal). 
 
 Intuitively, to identify a possession sequence we should just be able to iterate through the event-logs of a given in-play sequence, and note when the team of the player changes. However, since the event-logs include challenges for the ball even when they are unsuccessful, this would lead to systematically undercounting the length of possession sequences. The solution I adopt is to iterate through the event-logs for a single team within an in-play sequence, paying close attention to the location data: if the location of an event is identical to the target-location of the previous event associated with that same team, then I treat is as part of the same possession sequence, otherwise I treat it as a separate sequence.
 
-### Exploratory Visualization
+### Initial Exploration
 
-We can then visualize the location of the event-log data points in the context of a diagrammatic football pitch, to allow for an immediate and accessible view of the events of any match (see Figures 2 & 3), or particular possession sequence (see Figure 4).
+We begin our exploration of the data by tabulating the frequency of event types (Table 1) and pass types (Table 2), confirming that the *simple pass* is football's primary event.
 
 <details open>
 <summary>Table 1</summary>
@@ -124,6 +125,7 @@ print(table1.T.to_markdown(floatfmt="#.3g"))
 </figure>
 </details>
 
+We can then visualize the location of the event-log data points in the context of a diagrammatic football pitch, to allow for an immediate and accessible view of the events of any match (see Figures 2 & 3).
 
 
 <details open>
@@ -132,9 +134,9 @@ print(table1.T.to_markdown(floatfmt="#.3g"))
 ----
 
 <table><tr><td>
-<img src="../figures/EventMapHome.png">
+<img src="figures/EventMapHome.png">
 </td><td>
-<img src="../figures/EventMapAway.png">
+<img src="figures/EventMapAway.png">
 </td></tr></table>
 
 
@@ -153,9 +155,9 @@ Figure 2: Events for Home and Away Team
 ----
 
 <table><tr><td>
-<img src="../figures/PassMapHome.png">
+<img src="figures/PassMapHome.png">
 </td><td>
-<img src="../figures/PassMapAway.png">
+<img src="figures/PassMapAway.png">
 </td></tr></table>
 
 
@@ -169,6 +171,7 @@ Figure 3: Passes and Shots for Home and Away Team
 </figure>
 </details>
 
+As well as the general overview of a full match's events, we can also consider a particular possession sequence (see Figure 4).
 
 
 <details open>
@@ -176,7 +179,7 @@ Figure 3: Passes and Shots for Home and Away Team
 <figure>
 ----
 
-<img src="../figures/PossessionSequence.png">
+<img src="figures/PossessionSequence.png">
 <figcaption>Figure 4: Pitchmap showing Possession Sequence</figcaption>
 
 ----
@@ -184,15 +187,15 @@ Figure 3: Passes and Shots for Home and Away Team
 </figure>
 </details>
 
-We can compare this to a tabulated account of all events from just before the beginning of the possession sequence until its end, and we see that our algorithm has successfully handled the case where an opposition player's unsuccessful challenge interrupts the sequence of events associated with the team in possession.
+We can compare this to a tabulated account of all events from just before the beginning of the possession sequence until its end, and we see that our algorithm has successfully handled the case where an opposition player's challenge interrupts the sequence of events associated with the team in possession.
 
 <details open>
-<summary>Table 1</summary>
+<summary>Table 3</summary>
 <figure>
 ----
 
 <figcaption>
-Table 1: Events of Possession Sequence
+Table 3: Events of Possession Sequence
 </figcaption>
 
 
@@ -201,8 +204,8 @@ Table 1: Events of Possession Sequence
 
 import pandas as pd
 
-table1 = pd.read_csv('../tables/1.csv',index_col=0)
-print(table1.to_markdown(showindex=False))
+table = pd.read_csv('../tables/PossessionSequence.csv',index_col=False)
+print(table.to_markdown(showindex=False))
 
 
 ```
@@ -221,7 +224,7 @@ With possession sequences that end in a goal, it is generally possible to find v
 <figure>
 ----
 
-<img src="../figures/YouTubeClip.gif" width=800>
+<img src="figures/YouTubeClip.gif" width=800>
 <figcaption>Figure 5: YouTube Clip showing successful conclusion of possession sequence
 </figcaption>
 
@@ -235,7 +238,7 @@ With possession sequences that end in a goal, it is generally possible to find v
 
 ### Graph Theoretic Foundations
 
-Social Network Analysis applies the concepts of mathematical *graph theory*.
+Social Network Analysis [@SWassermanFaust1994] applies the concepts of mathematical *graph theory*.
 
 A *graph* is an ordered tuple $G = (V,E)$, consisting of a set of *nodes* (or *vertices*) $V = \{v_{i}\}$, and a set of *edges* $E = \{e_{ij}\}$, where the edge $e_{i,j}$ is the ordered pair $(i,j)$ representing some connection from the *source* $v_{i}$ to the *target* $v_{j}$. 
 
@@ -243,7 +246,7 @@ Two nodes connected by an edge are said to be *adjacent* to each other. An edge 
 
 A graph is *undirected* if $e_{ij} \iff e_{ji}$ -- otherwise it is *directed*. It is a *simple* graph if the edges are distinct and unrepeated -- otherwise it is a *multigraph*. 
 
-On an undirected graph, we call the number of edges connecting a node its *degree*; in a directed graph we distinguish between the *indegree* and *outdegree*.
+On an undirected graph, we call the number of edges connecting a node its *degree*. In a directed graph we distinguish between the *indegree* and *outdegree*.
 
 Given a graph G, we can describe a *walk* of length L as a sequence of adjacent (but not necessarily distinct) nodes $(v_{0},...,v_{L})$; or, equivalently, as a sequence of edges $e_{0,1},...,e_{L-1,L}$. Conversely, given a set of walks, we can construct the (minimal) underlying graph containing all the nodes and edges involved in the walks.
 
@@ -263,14 +266,14 @@ $$
 
 ### Graphing a Team's Possession Network
 
-We consider the possession sequences of a football match as *walks* of the football across a social graph in which the nodes are players (considered either individually or collectively), and the connecting edges are defined by the movement of the ball, as it travels from player to player. We can then construct the underlying graph for any particular possession sequence (as in Figure i), or indeed for the whole game.
+We consider the possession sequences of a football match as *walks* of the football across a social graph in which the nodes are players (considered either individually or collectively), and the connecting edges are defined by the movement of the ball, as it travels from player to player. We can then construct the underlying graph for any particular possession sequence (as in Figure 6), or indeed for the whole game.
 
 <details open>
 <summary>Figure 6</summary>
 <figure>
 ----
 
-<img src="../figures/PossessionGraph.png">
+<img src="figures/PossessionGraph.png">
 <figcaption>Figure 6: Graph of Possession Sequence leading to Goal
 </figcaption>
 
@@ -279,7 +282,7 @@ We consider the possession sequences of a football match as *walks* of the footb
 </figure>
 </details>
 
-There are several different 'weights' we could assign an edge: the Euclidean distance moved by the ball; the polar angle; the time interval. However, for this particular analysis we focus simply on the network connections between players.
+There are several different 'weights' we could assign an edge: the Euclidean distance moved by the ball; the polar angle; the time duration. However, for this particular analysis we focus simply on the network connections between players.
 
 We do not restrict our analysis to actual passes but include touches on the ball, challenges, and shots. Regardless of the type of event, we consider any movement of the ball from player $U$ to player $V$ as an edge $e_{U,V}$, including the loop $e_{U,U}$ where the player dribbles with the ball. As suggested above, we let the weight of the edge $e_{U,V}$ be the number of times the ball moves from player U to player V. We can then generate the adjacency matrix for a team in a particular match.
 
@@ -289,7 +292,7 @@ We do not restrict our analysis to actual passes but include touches on the ball
 <figure>
 ----
 
-<img src="../figures/AdjacencyMatrixAway.png">
+<img src="figures/AdjacencyMatrixAway.png">
 
 <figcaption>
 Figure 7: Heatmap of Adjacency Matrix
@@ -301,7 +304,7 @@ Figure 7: Heatmap of Adjacency Matrix
 </details>
 
 
-It is increasingly common [@TKnutson2018] to visualize a possession network by positioning each node according to the mean location of the player's touches, and varying the appearance (width, colour or transparency) of the edges to show the frequency of that pass. This swiftly communicates a team's formation, and gives a qualitative sense of a team's strategy.
+It is increasingly common [@TKnutson2018] to visualize a possession network by positioning each node according to the mean location of the player's touches, and varying the appearance (width, colour or transparency) of the edges to show the frequency of that pass (Figure 8). This swiftly communicates a team's formation, and gives a qualitative sense of a team's strategy.
 
 <details open>
 <summary>Figure 8</summary>
@@ -309,9 +312,9 @@ It is increasingly common [@TKnutson2018] to visualize a possession network by p
 ----
 
 <table><tr><td>
-<img src="../figures/PassingNetworkHome.png">
+<img src="figures/PassingNetworkHome.png">
 </td><td>
-<img src="../figures/PassingNetworkAway.png">
+<img src="figures/PassingNetworkAway.png">
 </td></tr></table>
 
 
@@ -329,7 +332,7 @@ Figure 8: Possession Networks for Home and Away Team
 
 ### Probabilistic Walks on a Graph
 
-To consider the team's ball-possession in its dynamic development, rather than merely as a static structure, we also need some definitions from *probability theory*.
+To consider the team's ball-possession in its dynamic development, rather than merely as a static structure, we also need some definitions from *probability theory* [@RSerfozo2009a].
 
 A *sample space* $\Omega = \{\omega_{i}\}$ is the set of possible *outcomes* of an *observation*. If we are observing who has the ball, then the sample space is the set of players on the pitch. An *event* $F$ is some subset of $\Omega$, and the *event space* $\mathcal{F}$ is the set of subsets of $\Omega$. In particular, $\Omega \subset \mathcal{F}$. 
 
@@ -341,7 +344,7 @@ A *random variable* is a function $X: \Omega \mapsto S$. If $S \subseteq \mathbb
 
 A *stochastic process* is an indexed set (that is, a *sequence*) of random variables, where the index commonly refers to points in time $t \in T$, which may be considered discretely (so $t \in \mathbb{N}_{0}$ ) or continuously (so $t \in \mathbb{R}_{ \ge 0}$ ). The range $S$ of a stochastic process $\{X(t,\omega):t\in T,\omega \in \Omega\}$ is called its *state space*, and the value $X_{t}$ is its *state* at time $t$.
 
-A stochastic process has the *Markov property* if $\forall t \ge 0, \mathbb{P}(X_{t+1}=s| X_{0},...,X_{t}) = \mathbb{P}(X_{t+1}=s| X_{t})$; this means that future states are dependent only on the present state, regardless of the previous history of past states. Such a process can be called a Markov process, and we call the probability $\mathbb{P}(X_{t+1}=s_{j}|X_{t}=s_{i})$ the *transition probability* $p_{ij}$ .
+A stochastic process has the *Markov property* if $\forall t \ge 0, \mathbb{P}(X_{t+1}=s| X_{0},...,X_{t}) = \mathbb{P}(X_{t+1}=s| X_{t})$; this means that future states are dependent only on the present state, regardless of the previous history of past states. Such a process can be called a Markov process [@JNorris1998], and we call the probability $\mathbb{P}(X_{t+1}=s_{j}|X_{t}=s_{i})$ the *transition probability* $p_{ij}$ .
 
 A Markov process is *time-homogenous* if the transition probabilities stay constant through time, ie. $\mathbb{P}(X_{n+1}=s|X_{n}) = \mathbb{P}(X_{m+1}=x|X_{m}) \forall m,n \in T$. If $S$ is countable, then the probability distribution of such a process can be described by its initial *distribution vector* $\boldsymbol{\alpha_{0}}$ and its *transition matrix* $\mathbf{P}$, where each $i$th row is made up of the transition probabilities $p_{ij}$ and $\sum\limits_{j} p_{ij} = 1 \forall i$. Specifically, after $k$ transitions we have the distribution $\boldsymbol{\alpha_{k}} = \boldsymbol{\alpha_{0}}\mathbf{P}^{k}$.
 
@@ -356,7 +359,7 @@ We can then picture the development of a Markov process as a *random walk* on th
 <figure>
 ----
 
-<img src="../figures/TransitionMatrixAway.png">
+<img src="figures/TransitionMatrixAway.png">
 
 <figcaption>
 Figure 9: Heatmap of Transition Matrix
@@ -367,9 +370,9 @@ Figure 9: Heatmap of Transition Matrix
 </figure>
 </details>
 
-### Calculating Markovian Expected Goals
+### Calculating 'Markov Expected Goals'
 
-In Figure 8 we show the heatmap of the Transition Matrix derived from the Adjacency Matrix shown in Figure 6. There we showed only the adjacency counts for the starting eleven, but now we include the subsitutes, as well as treating the 'Opposition' collectively as a single node. Most significantly, we now include a 'Goal' as a node. In particular, in the terms of Markov theory, we treat it as an *absorbing state* which loops back on itself with certain probability. This allows us to calculate the expected *hitting time* of a goal, given that any particular player has the ball. 
+In Figure 9 we show the heatmap of the Transition Matrix derived from the Adjacency Matrix shown in Figure 7. There we showed only the adjacency counts for the starting eleven, but now we include the subsitutes, as well as treating the 'Opposition' collectively as a single node. Most significantly, we now include a 'Goal' as a node. In particular, in the terms of Markov theory, we treat it as an *absorbing state* which loops back on itself with certain probability. This allows us to calculate the expected *hitting time* of a goal, given that any particular player has the ball. 
 
 The hitting time $\tau_{s}$ of some state $s \in S$ is given by $\tau_{s} := min\{ t \ge 0 \colon X_{t} = s \}$, the earliest time at which the process reaches that state.  
 
@@ -392,19 +395,22 @@ If $s_{i}$ is an absorbing state, then the probability that it is reached *for t
 If the expectation of the hitting time is finite it can then be approximated directly by iterating up to some large $K$:
 $$\mathbb{E}[\tau_{s}] = \sum_{k=0}^\infty k\pi_k \approx \sum_{k=0}^K k\pi_k$$ 
 
-Thus we can quantify, for each player on the team, the expected number of events there will be before the team scores a goal. We invert this to give a measure of the expected number of goals; and scale it by the team's average number of events per game, we call this measure *Markovian Expected Goals* (MXG). We then scale this by the team's mean expected goals values to give a *Relative MXG* value, so that values can be compared fairly across teams to see which individual players contribute the most to their teams' goalscoring chances.
+Thus we can quantify, for each player on the team, the expected number of events there will be before the team scores a goal. We invert this to give a measure of the expected number of goals; and standardize it by the team's average number of events per game. We then scale this by the team's mean values, so that we can make a fair comparison across teams to see which individual players contribute the most to their teams' goalscoring chances. We call this measure *Markov Expected Goals* (MXG). 
 
 ### Results
 
-The 
+Applying our method to the cumulative season's transition matrix for every team in the dataset, we find that Inter's Icardi is the player who contributed most to the chance of his team scoring (considering only players with degree of at least 1000). His MXG score is almost three times higher than that of Messi, who only just makes it into the Top Twenty (Table 4).
+
+It is instructive to consider Messi's score in order to understand what a high MXG score implies. Of the twenty, Messi has the highest number of goals, the highest number of loops, and the highest (out-)degree, but the very strength of his degree score means that his percentage of goals per degree (which correlates most strongly with MXG) is the lowest.
+
 
 <details open>
-<summary>Table 2</summary>
+<summary>Table 4</summary>
 <figure>
 ----
 
 <figcaption>
-Table 2: Top Twenty European Players by MXG Score
+Table 4: Top Twenty Players in European Leagues by MXG Score (2017-18)
 </figcaption>
 
 
@@ -414,7 +420,7 @@ Table 2: Top Twenty European Players by MXG Score
 
 import pandas as pd
 
-MXGtable = pd.read_csv('../tables/2.csv',index_col=0)
+MXGtable = pd.read_csv('../tables/Top20.csv',index_col=0)
 print(MXGtable.to_markdown(floatfmt="#.3g"))
 
 
